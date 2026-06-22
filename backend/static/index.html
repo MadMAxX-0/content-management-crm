@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Drive Connection — CRM</title>
+<style>
+  :root{--bg:#f5f6f8;--panel:#fff;--ink:#16181d;--muted:#646b78;--line:#e9ebef;--line3:#e1e4e9;
+    --brand:#5b5bd6;--brand-soft:#f0f1fe;--brand-softln:#c6c8f8;--brand-tx:#4f4ec9;
+    --green:#2f9e63;--greenbg:#e9f6ee;--greenln:#aedcc0;--green-tx:#218358;
+    --red:#d6464b;--redbg:#fdf0ef;--redln:#f3c1c0;--red-tx:#c12e33;
+    --sh:0 1px 3px rgba(20,22,28,.04),0 4px 12px -4px rgba(20,22,28,.07);}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);
+    color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;
+    align-items:flex-start;justify-content:center;padding:48px 20px}
+  .wrap{width:100%;max-width:760px}
+  h1{font-size:24px;letter-spacing:-.02em;margin:0 0 4px}
+  .lead{color:var(--muted);margin:0 0 24px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:24px;margin-bottom:18px}
+  .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid transparent}
+  .pill.on{background:var(--greenbg);color:var(--green-tx);border-color:var(--greenln)}
+  .pill.off{background:var(--redbg);color:var(--red-tx);border-color:var(--redln)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line3);background:#fff;color:var(--ink);
+    padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
+  .btn:hover{background:#fafafa}
+  .btn.brand{background:linear-gradient(180deg,#6a6ae0,var(--brand));color:#fff;border-color:var(--brand)}
+  .btn.brand:hover{filter:brightness(1.04)}
+  .btn.sm{padding:7px 12px;font-size:13px}
+  .btn.ghost{background:transparent;border-color:var(--line3);color:var(--muted)}
+  .gicon{width:18px;height:18px}
+  .muted{color:var(--muted)}
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)}
+  .kv:first-child{border-top:0}
+  .tree{margin-top:6px}
+  .tnode{display:flex;align-items:center;gap:9px;padding:8px 8px;border-radius:8px}
+  .tnode:hover{background:#fafafb}
+  .tnode .fi{color:#d4a72c}
+  .tnode .nm{font-weight:500}
+  .tnode .ct{margin-left:auto;font-size:11px;color:#9aa1ad;background:#f3f4f6;border:1px solid #e7e9ee;border-radius:20px;padding:2px 9px}
+  .indent{margin-left:16px;padding-left:8px;border-left:1px dashed var(--line3)}
+  .note{background:#fffdf6;border:1px solid #f0d488;color:#945e00;border-radius:11px;padding:13px 15px;font-size:13px;margin-bottom:18px}
+  .err{background:var(--redbg);border:1px solid var(--redln);color:var(--red-tx);border-radius:11px;padding:13px 15px;font-size:13px;margin-bottom:18px}
+  code{background:#f1f2f5;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12.5px}
+  .head-ic{width:42px;height:42px;border-radius:12px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+  .field{display:flex;gap:8px;margin-top:12px}
+  .field input{flex:1;border:1px solid var(--line3);border-radius:9px;padding:9px 12px;font-size:13.5px;outline:0}
+  .field input:focus{border-color:var(--brand-softln);box-shadow:0 0 0 3px rgba(91,91,214,.18)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Google Drive Connection</h1>
+  <p class="lead">Connect the agency Google account. On connect, the CRM creates <code id="rootname">companyname_crm</code> and its folders automatically.</p>
+
+  <div id="banner"></div>
+
+  <div class="card">
+    <div class="head-ic">
+      <svg class="gicon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div style="font-weight:700;font-size:16px">Connection status</div>
+        <div class="muted" id="status-sub">Checking…</div>
+      </div>
+      <span class="pill off" id="status-pill"><span class="dot"></span> …</span>
+    </div>
+    <div id="connected-box" style="display:none;margin-top:18px">
+      <div class="kv"><span class="muted">Account</span><span id="acct">—</span></div>
+      <div class="kv"><span class="muted">CRM root folder</span><span id="rootlabel">—</span></div>
+      <div class="kv"><span class="muted">Storage</span><span id="storage">—</span></div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn brand sm" onclick="loadTree()">Refresh structure</button>
+        <button class="btn ghost sm" onclick="disconnect()">Disconnect</button>
+      </div>
+    </div>
+    <div id="connect-box" style="margin-top:18px">
+      <a class="btn brand" href="/auth/google/login">
+        <svg class="gicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        Connect Google Drive
+      </a>
+    </div>
+  </div>
+
+  <div class="card" id="tree-card" style="display:none">
+    <div style="font-weight:700;font-size:16px;margin-bottom:4px">CRM Drive structure</div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:6px">Live from your Google Drive</div>
+    <div class="tree" id="tree"></div>
+    <div class="field">
+      <input id="m-name" placeholder="Model name (e.g. testmodel)" />
+      <input id="m-id" placeholder="User ID (e.g. 001)" style="max-width:160px" />
+      <button class="btn sm" onclick="createModel()">Create model folder</button>
+    </div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Creates <code>models/&lt;name_id&gt;/Root folder/</code> — the registration trigger.</div>
+  </div>
+</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+
+function folderSvg(){return `<svg class="gicon fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;}
+
+async function refreshStatus(){
+  const r = await fetch('/api/status'); const s = await r.json();
+  const pill = document.getElementById('status-pill');
+  const sub = document.getElementById('status-sub');
+  if(!s.configured){
+    pill.className='pill off'; pill.innerHTML='<span class="dot"></span> Not configured';
+    sub.innerHTML='Set <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in <code>backend/.env</code>, then restart.';
+    document.getElementById('connect-box').style.display='none';
+    return;
+  }
+  if(s.connected){
+    pill.className='pill on'; pill.innerHTML='<span class="dot"></span> Connected';
+    sub.textContent='The CRM is linked to your Google Drive.';
+    document.getElementById('connect-box').style.display='none';
+    document.getElementById('connected-box').style.display='block';
+    document.getElementById('acct').textContent = s.email || '—';
+    document.getElementById('rootlabel').textContent = s.root_folder || '—';
+    document.getElementById('rootname').textContent = s.root_folder || 'companyname_crm';
+    document.getElementById('storage').textContent = s.shared_drive ? 'Shared Drive' : 'My Drive';
+    document.getElementById('tree-card').style.display='block';
+    loadTree();
+  } else {
+    pill.className='pill off'; pill.innerHTML='<span class="dot"></span> Not connected';
+    sub.textContent='Connect the agency Google account to begin.';
+  }
+}
+
+async function loadTree(){
+  const r = await fetch('/api/tree'); const t = await r.json();
+  const el = document.getElementById('tree');
+  if(!t.root){ el.innerHTML='<div class="muted">No CRM folder yet.</div>'; return; }
+  el.innerHTML = `<div class="tnode">${folderSvg()}<span class="nm">${t.root.name}</span></div>
+    <div class="indent">${(t.folders||[]).map(f=>`<div class="tnode">${folderSvg()}<span class="nm">${f.name}</span><span class="ct">${f.child_count} items</span></div>`).join('')}</div>`;
+}
+
+async function createModel(){
+  const name = document.getElementById('m-name').value.trim();
+  const id = document.getElementById('m-id').value.trim();
+  if(!name || !id){ alert('Enter a model name and user id'); return; }
+  const r = await fetch(`/api/model/folder?name=${encodeURIComponent(name)}&user_id=${encodeURIComponent(id)}`, {method:'POST'});
+  if(r.ok){ loadTree(); } else { alert('Failed: ' + (await r.text())); }
+}
+
+async function disconnect(){
+  await fetch('/api/disconnect',{method:'POST'});
+  location.href='/';
+}
+
+if(q.get('connected')) history.replaceState({},'',location.pathname);
+if(q.get('error')) document.getElementById('banner').innerHTML = `<div class="err">Connection error: ${q.get('error')}</div>`;
+refreshStatus();
+</script>
+</body>
+</html>

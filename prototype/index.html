@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Content Management CRM — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* neutrals — cool slate, sophisticated */
+    --bg:#f5f6f8; --bg2:#fafbfc; --panel:#ffffff;
+    --ink:#16181d; --ink2:#2b2f38; --muted:#646b78; --muted2:#9aa1ad;
+    --line:#e9ebef; --line2:#f1f2f5; --line3:#e1e4e9;
+    /* brand — refined iris/indigo */
+    --brand:#5b5bd6; --brand-dk:#5151cd; --brand-soft:#f0f1fe; --brand-softln:#c6c8f8; --brand-tx:#4f4ec9;
+    /* danger / admin — refined red */
+    --accent:#e5484d; --accentdk:#d13438;
+    /* semantics — muted, premium */
+    --green:#2f9e63; --greenbg:#e9f6ee; --greenln:#aedcc0; --green-tx:#218358;
+    --amber:#bd7b00; --amberbg:#fdf6e3; --amberln:#f0d488; --amber-tx:#945e00;
+    --red:#d6464b; --redbg:#fdf0ef; --redln:#f3c1c0; --red-tx:#c12e33;
+    --blue:#3a5bd9; --bluebg:#eef1fd;
+    --indigo:#5b5bd6; --indigobg:#f0f1fe;
+    /* radii */
+    --r-sm:8px; --r:12px; --r-lg:16px; --r-xl:20px;
+    /* shadows — tighter, cooler */
+    --sh-xs:0 1px 2px rgba(20,22,28,.05);
+    --sh-sm:0 1px 2px rgba(20,22,28,.04), 0 1px 3px rgba(20,22,28,.05);
+    --sh:0 1px 3px rgba(20,22,28,.04), 0 4px 12px -4px rgba(20,22,28,.07);
+    --sh-md:0 4px 16px -6px rgba(20,22,28,.11), 0 2px 6px -2px rgba(20,22,28,.05);
+    --sh-lg:0 18px 44px -14px rgba(20,22,28,.24);
+    --ring:0 0 0 3px rgba(91,91,214,.20);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:14px; line-height:1.5;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    font-feature-settings:"cv11","ss01"; letter-spacing:-.006em;
+  }
+  .tnum{font-variant-numeric:tabular-nums}
+  ::selection{background:#18181b;color:#fff}
+  svg.ic{flex:0 0 auto;vertical-align:middle}
+  button,input,select{font-family:inherit;letter-spacing:inherit}
+  .app{display:flex; min-height:100vh}
+
+  /* ---------- Sidebar (dark rail) ---------- */
+  .side{width:248px; flex:0 0 248px; background:linear-gradient(180deg,#15161d,#0b0c10);
+    border-right:1px solid #20222c; display:flex; flex-direction:column; height:100vh; position:sticky; top:0;}
+  .side .acct{display:flex; align-items:center; gap:11px; padding:18px 16px 15px; margin:0 4px; border-bottom:1px solid rgba(255,255,255,.07)}
+  .avatar{width:36px;height:36px;border-radius:11px;background:linear-gradient(145deg,var(--brand),#4a48c4);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex:0 0 36px;box-shadow:0 4px 14px -2px rgba(91,91,214,.55)}
+  .acct .nm{font-weight:600;font-size:14px;line-height:1.15;color:#f4f4f5}
+  .acct .rl{font-size:11px;color:#a1a1aa;display:flex;align-items:center;gap:4px;margin-top:1px}
+  .crown{color:#eab308}
+  .acct .chev{margin-left:auto;color:#52525b}
+  .acct .chev svg{width:16px;height:16px}
+  .nav{flex:1; overflow-y:auto; padding:10px 10px 16px}
+  .nav::-webkit-scrollbar{width:8px}
+  .nav::-webkit-scrollbar-thumb{background:transparent;border-radius:8px}
+  .nav:hover::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12)}
+  .nav .lbl{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#56565f;padding:15px 10px 6px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:9px;color:#b6b6bf;
+    text-decoration:none;font-size:13.5px;font-weight:500;cursor:pointer;margin:1.5px 0;position:relative;
+    transition:background .15s ease,color .15s ease;}
+  .nav a svg.ic{width:18px;height:18px;opacity:.7;transition:opacity .15s ease,color .15s ease}
+  .nav a:hover{background:rgba(255,255,255,.06);color:#fafafa}
+  .nav a:hover svg.ic{opacity:1}
+  .nav a.active{background:linear-gradient(90deg,rgba(91,91,214,.22),rgba(91,91,214,.07));color:#fff;font-weight:600;
+    box-shadow:inset 0 0 0 1px rgba(91,91,214,.32)}
+  .nav a.active svg.ic{opacity:1;color:#b4b4f0}
+  .nav a.active::before{content:"";position:absolute;left:-10px;top:50%;transform:translateY(-50%);
+    width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--brand);box-shadow:0 0 12px rgba(91,91,214,.75)}
+  .nav a.soon{color:#6a6a74}
+  .nav a.soon svg{opacity:.4}
+  .nav a.soon:hover{background:rgba(255,255,255,.04);color:#8c8c96}
+  .pill{margin-left:auto;font-size:9.5px;background:rgba(255,255,255,.08);color:#9b9ba6;padding:2.5px 7px;border-radius:20px;font-weight:600;letter-spacing:.01em}
+  .pill.ai{background:linear-gradient(135deg,rgba(91,91,214,.24),rgba(91,91,214,.12));border:1px solid rgba(91,91,214,.42);color:#c4c4f2}
+  .nav a.xai{border:1px solid rgba(91,91,214,.35);border-radius:11px;margin-top:8px;color:#d2d2f5;background:linear-gradient(135deg,rgba(91,91,214,.12),rgba(91,91,214,.04))}
+  .nav a.xai svg{color:#b4b4f0;opacity:1}
+  .nav .logout{color:#e06a6e;font-weight:600}
+  .nav .logout svg{color:#e06a6e;opacity:1}
+  .nav .logout:hover{background:rgba(248,113,113,.12)}
+  .divider{height:1px;background:rgba(255,255,255,.07);margin:10px 6px}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .content{padding:30px 40px 70px;max-width:1520px;width:100%}
+  @keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .content.enter{animation:enter .28s cubic-bezier(.2,.7,.2,1)}
+  .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
+  .page-head h1{font-size:26px;margin:0 0 4px;letter-spacing:-.025em;font-weight:650;display:flex;align-items:center;gap:11px}
+  .page-head p{margin:0;color:var(--muted);font-size:13.5px}
+  .head-ic{width:38px;height:38px;border-radius:11px;background:linear-gradient(160deg,#f4f4f5,#ececee);
+    display:flex;align-items:center;justify-content:center;color:#3f3f46;box-shadow:var(--sh-xs),inset 0 1px 0 #fff}
+  .head-ic svg{width:20px;height:20px}
+  .countbadge{font-size:11.5px;background:#fff;border:1px solid var(--line3);border-radius:20px;padding:3px 10px;color:var(--muted);font-weight:500;vertical-align:middle}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line3);background:#fff;color:var(--ink2);
+    padding:8px 14px;border-radius:9px;font-size:13px;font-weight:550;cursor:pointer;white-space:nowrap;
+    box-shadow:var(--sh-xs);transition:background .15s,border-color .15s,box-shadow .15s,transform .06s}
+  .btn:hover{background:#fafafa;border-color:#dcdce0}
+  .btn:active{transform:translateY(.5px)}
+  .btn:focus-visible{outline:0;box-shadow:var(--ring)}
+  .btn svg.ic{width:15px;height:15px;color:#52525b}
+  .btn.dark{background:linear-gradient(180deg,#27272a,#18181b);color:#fff;border-color:#18181b;box-shadow:var(--sh-sm),inset 0 1px 0 rgba(255,255,255,.08)}
+  .btn.dark:hover{background:linear-gradient(180deg,#303034,#1c1c1f)}
+  .btn.dark svg{color:#fff}
+  .btn.sm{padding:6px 11px;font-size:12.5px}
+  .btn.icon{padding:7px;border-radius:8px}
+  .btn.icon svg{width:16px;height:16px}
+  .btn.danger svg{color:var(--accentdk)}
+  .btn.danger:hover{background:var(--redbg);border-color:var(--redln)}
+  .btn-row{display:flex;gap:9px;flex-wrap:wrap}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh)}
+  .card.pad{padding:22px}
+  .card.hover{transition:box-shadow .2s,transform .2s,border-color .2s}
+  .card.hover:hover{box-shadow:var(--sh-md);border-color:var(--line3)}
+  .grid{display:grid;gap:16px}
+
+  /* stat cards */
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 18px 16px;box-shadow:var(--sh);
+    transition:box-shadow .2s,transform .2s,border-color .2s}
+  .stat:hover{box-shadow:var(--sh-md);border-color:var(--line3)}
+  .stat-top{display:flex;justify-content:space-between;align-items:center}
+  .stat-label{color:#52525b;font-weight:550;font-size:13px}
+  .stat-ic{width:36px;height:36px;border-radius:10px;background:linear-gradient(160deg,#f5f5f6,#eeeef0);
+    display:flex;align-items:center;justify-content:center;color:#52525b;box-shadow:inset 0 1px 0 #fff}
+  .stat-ic svg{width:18px;height:18px}
+  .stat .v{font-size:31px;font-weight:680;letter-spacing:-.03em;margin-top:14px;font-variant-numeric:tabular-nums}
+  .stat .s{font-size:12px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:5px}
+  .stat .s svg{width:14px;height:14px}
+  .stat .s.up{color:var(--green)} .stat .s.warn{color:var(--amber)}
+
+  /* table */
+  .tbl{width:100%;border-collapse:separate;border-spacing:0}
+  .tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9499a1;font-weight:600;padding:0 14px 13px}
+  .tbl td{padding:14px;border-top:1px solid var(--line2);vertical-align:middle}
+  .tbl tbody tr{transition:background .12s}
+  .tbl tbody tr:hover td{background:#fafafb}
+  .tbl .ic{width:15px;height:15px;color:var(--muted2)}
+  .u-name{font-weight:600;letter-spacing:-.01em}
+  .u-mail{color:var(--muted);font-size:12.5px}
+  .muted{color:var(--muted)}
+  .sub{color:var(--muted);font-size:12px}
+  .cellrow{display:flex;align-items:center;gap:6px}
+
+  /* badges */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:7px;border:1px solid transparent;letter-spacing:.005em}
+  .badge svg.ic{width:12px;height:12px}
+  .b-admin{background:var(--redbg);color:var(--red-tx);border-color:var(--redln)}
+  .b-model{background:#f3f4f6;color:#586070;border-color:#e7e9ee}
+  .b-emp{background:var(--brand-soft);color:var(--brand-tx);border-color:var(--brand-softln)}
+  .b-green{background:var(--greenbg);color:var(--green-tx);border-color:var(--greenln)}
+  .b-grey{background:var(--ink);color:#fff}
+  .b-amber{background:var(--amberbg);color:var(--amber-tx);border-color:var(--amberln)}
+  .b-red{background:var(--redbg);color:var(--red-tx);border-color:var(--redln)}
+  .b-todo{background:var(--amberbg);color:var(--amber-tx);border-color:var(--amberln)}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;background:currentColor}
+
+  /* avatars */
+  .av{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:600;
+    color:#52525b;background:linear-gradient(160deg,#f1f1f3,#e7e7ea);flex:0 0 38px;overflow:hidden;font-size:13px;box-shadow:inset 0 1px 0 #fff}
+  .av.purple{background:linear-gradient(160deg,#f3effe,#e9e1fc);color:#6d28d9}
+  .av.amberbg{background:linear-gradient(160deg,#fff5e1,#fdecc4);color:#945e00}
+  .av svg{width:18px;height:18px;color:#8a8f96}
+
+  /* toolbar / inputs */
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .search{flex:1;min-width:230px;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line3);border-radius:10px;padding:9px 13px;transition:border-color .15s,box-shadow .15s}
+  .search:focus-within{border-color:#d4d4d8;box-shadow:var(--ring)}
+  .search svg{width:16px;height:16px;color:var(--muted2)}
+  .search input{border:0;outline:0;flex:1;font-size:13.5px;background:transparent;color:var(--ink)}
+  .search input::placeholder{color:#a1a1aa}
+  .view-toggle{display:flex;border:1px solid var(--line3);border-radius:9px;overflow:hidden;background:#fff;box-shadow:var(--sh-xs)}
+  .view-toggle button{border:0;background:#fff;padding:8px 11px;cursor:pointer;color:#9499a1;display:flex;align-items:center;transition:background .15s,color .15s}
+  .view-toggle button svg{width:16px;height:16px}
+  .view-toggle button:hover{background:#fafafa;color:#52525b}
+  .view-toggle button.active{background:linear-gradient(180deg,#7d7de0,var(--brand));color:#fff}
+  .selectish{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line3);border-radius:10px;padding:8px 13px;font-size:13px;font-weight:550;cursor:pointer;color:#3f3f46;box-shadow:var(--sh-xs);transition:background .15s,border-color .15s}
+  .selectish:hover{background:#fafafa;border-color:#dcdce0}
+  .selectish svg{width:15px;height:15px;color:var(--muted2)}
+  .selectish .chev{margin-left:1px}
+
+  .prog{width:100px;height:6px;background:#ededf0;border-radius:6px;overflow:hidden}
+  .prog > i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#8a8ae6,var(--brand))}
+
+  /* model cards */
+  .mcards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .mcard{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh);transition:box-shadow .2s,transform .2s,border-color .2s}
+  .mcard:hover{box-shadow:var(--sh-md);border-color:var(--line3)}
+  .mcard .photo{height:230px;background:radial-gradient(120% 120% at 50% 0%,#f6f6f8,#e9eaee);display:flex;align-items:center;justify-content:center;position:relative}
+  .mcard .photo .bigav{width:96px;height:96px;border-radius:50%;background:#fff;box-shadow:0 8px 24px -6px rgba(24,24,27,.16);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:600;color:#9097a0}
+  .mcard .photo .tag{position:absolute;top:13px;right:13px}
+  .mcard .body{padding:17px}
+  .mcard .body h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.02em}
+  .mcard .body .legal{color:var(--muted);font-size:12.5px;margin:2px 0 12px}
+  .mcard .body .line{display:flex;align-items:center;gap:8px;color:#3f3f46;font-size:12.5px;margin:6px 0}
+  .mcard .body .line svg{width:15px;height:15px;color:var(--muted2)}
+
+  /* drive */
+  .twocol{display:grid;grid-template-columns:1fr 1.45fr;gap:18px;align-items:start}
+  .panel-title{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:-.015em}
+  .panel-title svg{width:18px;height:18px;color:#52525b}
+  .panel-sub{color:var(--muted);font-size:12.5px;margin:3px 0 16px}
+  .mlist-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:11px;cursor:pointer;border:1px solid transparent;transition:background .14s,border-color .14s}
+  .mlist-item:hover{background:#fafafb}
+  .mlist-item.active{background:#f7f7f8;border-color:var(--line3);box-shadow:var(--sh-xs)}
+  .mlist-item .meta{flex:1;min-width:0}
+  .mlist-item .meta .nm{font-weight:600}
+  .mlist-item .meta .st{font-size:12px;color:var(--muted)}
+  .mlist-item .meta .st.warn{color:var(--accentdk)}
+  .filecount{font-size:11px;background:#f4f4f5;color:#52525b;border:1px solid #e9e9ec;border-radius:20px;padding:3px 10px;font-weight:550;white-space:nowrap}
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#a1a1aa;text-align:center;padding:64px 20px;gap:13px}
+  .empty svg{width:40px;height:40px;color:#d4d4d8}
+  .tree-row{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:9px;transition:background .12s}
+  .tree-row:hover{background:#fafafb}
+  .tree-row .chev{width:16px;color:var(--muted2);cursor:pointer;display:inline-flex}
+  .tree-row .chev svg{width:14px;height:14px}
+  .tree-row .nm{flex:1;display:flex;align-items:center;gap:8px;font-size:13.5px}
+  .tree-row .nm svg{width:16px;height:16px;color:#8a8f96}
+  .tree-row .nm .fld svg{color:#d4a72c}
+  .tree-row .sz{font-size:11px;color:var(--muted2);font-variant-numeric:tabular-nums}
+  .tree-row .dt{font-size:11px;color:var(--muted2);margin-right:6px}
+  .indent{padding-left:22px;border-left:1px dashed var(--line3);margin-left:15px}
+  .kebab{cursor:pointer;color:var(--muted2);padding:3px 6px;border-radius:7px;display:inline-flex;transition:background .12s,color .12s}
+  .kebab svg{width:16px;height:16px}
+  .kebab:hover{background:#f1f1f3;color:#3f3f46}
+  .fcount-mini{font-size:11px;color:var(--muted2)}
+
+  /* context menu */
+  .ctx{position:fixed;z-index:60;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--sh-lg);padding:6px;min-width:200px;display:none;animation:enter .14s ease}
+  .ctx button{display:flex;align-items:center;gap:11px;width:100%;border:0;background:transparent;padding:9px 11px;border-radius:8px;font-size:13px;cursor:pointer;color:#3f3f46;text-align:left;transition:background .12s}
+  .ctx button svg{width:16px;height:16px;color:var(--muted)}
+  .ctx button:hover{background:#f4f4f6}
+  .ctx button.danger{color:var(--accentdk)}
+  .ctx button.danger svg{color:var(--accentdk)}
+  .ctx button.danger:hover{background:var(--redbg)}
+  .ctx .sep{height:1px;background:var(--line2);margin:5px 6px}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(24,24,27,.4);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:80;padding:20px}
+  .overlay.open{display:flex;animation:enter .18s ease}
+  .modal{background:#fff;border-radius:18px;box-shadow:var(--sh-lg);width:100%;max-width:480px;padding:26px}
+  .modal h3{margin:0 0 6px;font-size:18px;font-weight:650;letter-spacing:-.02em}
+  .modal p.desc{margin:0 0 18px;color:var(--muted);font-size:13px;line-height:1.55}
+  .modal .field{margin-bottom:16px}
+  .modal label{display:block;font-weight:600;font-size:12.5px;margin-bottom:7px}
+  .modal input,.modal select{width:100%;border:1px solid var(--line3);border-radius:10px;padding:11px 13px;font-size:13.5px;outline:0;transition:border-color .15s,box-shadow .15s}
+  .modal input:focus,.modal select:focus{border-color:#d4d4d8;box-shadow:var(--ring)}
+  .modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+  .modal-close{float:right;cursor:pointer;color:var(--muted2);font-size:22px;line-height:1;border:0;background:none;transition:color .12s}
+  .modal-close:hover{color:var(--ink)}
+
+  /* tabs */
+  .tabs{display:flex;background:#f1f1f3;border:1px solid var(--line);border-radius:12px;padding:4px;gap:3px;margin-bottom:20px}
+  .tabs button{flex:1;border:0;background:transparent;padding:9px;border-radius:9px;font-weight:550;font-size:13.5px;color:#71717a;cursor:pointer;transition:background .18s,color .18s,box-shadow .18s}
+  .tabs button:hover{color:var(--ink2)}
+  .tabs button.active{background:#fff;color:var(--ink);box-shadow:var(--sh-sm);font-weight:600}
+
+  /* charts */
+  .donut{width:152px;height:152px;border-radius:50%;background:conic-gradient(#d6a020 0 100%);position:relative;box-shadow:var(--sh-xs)}
+  .donut::after{content:"";position:absolute;inset:27px;background:#fff;border-radius:50%}
+  .bars{display:flex;align-items:flex-end;gap:26px;height:175px;padding:10px 6px 0}
+  .bars .bar{flex:1;border-radius:9px 9px 0 0;display:flex;align-items:flex-start;justify-content:center;color:#fff;font-weight:600;font-size:12px;padding-top:9px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:#52525b;margin-top:14px;justify-content:center}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .swatch{width:11px;height:11px;border-radius:4px;display:inline-block}
+  .kv{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line2)}
+  .kv:first-of-type{border-top:0}
+
+  .notice{background:linear-gradient(180deg,#fffdf6,#fffaeb);border:1px solid var(--amberln);color:#92580a;border-radius:12px;padding:13px 15px;font-size:13px;display:flex;gap:10px;align-items:center;margin-bottom:20px}
+  .notice svg{width:17px;height:17px;flex:0 0 17px;color:#945e00}
+  .soon-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:74px 20px;color:#71717a;gap:15px}
+  .soon-wrap .big{width:62px;height:62px;border-radius:18px;background:linear-gradient(160deg,#f4f4f5,#ececee);display:flex;align-items:center;justify-content:center;color:#9097a0;box-shadow:var(--sh-xs),inset 0 1px 0 #fff}
+  .soon-wrap .big svg{width:28px;height:28px}
+  .soon-wrap .st{font-size:16px;font-weight:600;color:#3f3f46;letter-spacing:-.01em}
+
+  /* range select */
+  .range-select{appearance:none;-webkit-appearance:none;background:#fff;border:1px solid var(--line3);border-radius:10px;
+    padding:9px 36px 9px 14px;font-size:13px;font-weight:550;color:#3f3f46;cursor:pointer;box-shadow:var(--sh-xs);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa1ad' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;transition:border-color .15s,box-shadow .15s}
+  .range-select:hover{border-color:#dcdce0}
+  .range-select:focus{outline:0;border-color:#d4d4d8;box-shadow:var(--ring)}
+
+  /* filters */
+  .hide{display:none!important}
+  .selectish.on{background:var(--brand-soft);border-color:var(--brand-softln);color:var(--brand-tx)}
+  .selectish.on svg{color:var(--brand)}
+  .filter-row{display:flex;gap:20px;align-items:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--line2);flex-wrap:wrap}
+  .filt{display:flex;flex-direction:column;gap:6px}
+  .filt label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#9499a1}
+  .filt select{border:1px solid var(--line3);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:550;background:#fff;color:var(--ink2);outline:0;cursor:pointer;min-width:140px;transition:border-color .15s,box-shadow .15s}
+  .filt select:focus{border-color:#d4d4d8;box-shadow:var(--ring)}
+
+  /* toast */
+  .toast-wrap{position:fixed;right:22px;bottom:22px;z-index:120;display:flex;flex-direction:column;gap:10px}
+  .toast{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--sh-lg);padding:13px 15px;min-width:260px;display:flex;gap:11px;align-items:flex-start;animation:toastin .3s cubic-bezier(.2,.7,.2,1)}
+  @keyframes toastin{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+  .toast .tk{width:30px;height:30px;border-radius:9px;background:var(--greenbg);color:var(--green-tx);display:flex;align-items:center;justify-content:center;flex:0 0 30px}
+  .toast .tk svg{width:17px;height:17px}
+  .toast .tt{font-weight:600;font-size:13.5px;letter-spacing:-.01em}
+  .toast .ts{color:var(--muted);font-size:12.5px;margin-top:1px}
+
+  @media(max-width:1100px){.mcards{grid-template-columns:repeat(2,1fr)} .twocol{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="acct">
+      <div class="avatar">A</div>
+      <div>
+        <div class="nm">Administrator</div>
+        <div class="rl"><span class="crown">♛</span> Admin</div>
+      </div>
+      <span class="chev" id="acct-chev"></span>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="lbl">Workspace</div>
+      <a data-page="overview" data-ic="grid"> Overview</a>
+      <a data-page="users" data-ic="users"> Manage Users</a>
+      <a data-page="models" data-ic="star"> Manage Models</a>
+      <a data-page="register" data-ic="uplus" class="soon"> Register Models <span class="pill">Phase 2</span></a>
+      <div class="lbl">Content</div>
+      <a data-page="tasks" data-ic="clip" class="soon"> Model Tasks <span class="pill">Last</span></a>
+      <a data-page="drive" data-ic="folder"> Drive Manager</a>
+      <a data-page="templates" data-ic="folders" class="soon"> Model Drive Templates <span class="pill">Phase 2</span></a>
+      <a data-page="medialib" data-ic="image" class="soon"> Media Library <span class="pill">Phase 2</span></a>
+      <a data-page="stats" data-ic="pie"> Model Tasks Statistics</a>
+      <div class="lbl">Creator</div>
+      <a data-page="appview" data-ic="phone"> Creator App View <span class="pill">Last</span></a>
+      <div class="divider"></div>
+      <a class="xai" data-ic="spark"> X AI <span class="pill ai">AI</span></a>
+      <a class="soon" data-ic="search"> Quick Search <span class="pill">⌘K</span></a>
+      <a class="logout" data-ic="logout"> Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<div class="ctx" id="ctx"></div>
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<div class="overlay" id="m-req">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('m-req')">×</button>
+    <h3>Set content requirement</h3>
+    <p class="desc">Set the minimum number of files per folder. Folders with fewer files show <b style="color:#c12e33">red</b> (under requirement); folders that meet or exceed show <b style="color:#218358">green</b>.</p>
+    <div class="field"><label>Minimum files per folder</label><input type="number" placeholder="e.g. 50" /></div>
+    <div class="actions">
+      <button class="btn" onclick="closeModal('m-req')">Cancel</button>
+      <button class="btn dark" onclick="closeModal('m-req')">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-move">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('m-move')">×</button>
+    <h3>Move file</h3>
+    <p class="desc">Move a file to another folder within this model's drive.</p>
+    <div class="field"><label>Destination folder</label>
+      <select><option>Root folder</option><option>New Folder</option><option>PPV</option><option>Customs</option></select>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeModal('m-move')">Cancel</button>
+      <button class="btn dark" onclick="closeModal('m-move')">Move file</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ----------------- ICONS ----------------- */
+function svg(p){return `<svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;}
+const ICONS = {
+  grid: svg('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),
+  users: svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  user: svg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+  star: svg('<polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9"/>'),
+  uplus: svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/>'),
+  clip: svg('<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>'),
+  folder: svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  folders: svg('<path d="M8 4h3l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M6 8H4a2 2 0 0 0-2 2v8"/>'),
+  file: svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'),
+  image: svg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>'),
+  pie: svg('<path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M21 12a9 9 0 0 0-9-9"/>'),
+  phone: svg('<rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/>'),
+  spark: svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l1.5 1.5M16.5 16.5L18 18M18 6l-1.5 1.5M7.5 16.5 6 18"/>'),
+  search: svg('<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>'),
+  logout: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'),
+  clock: svg('<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>'),
+  cal: svg('<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>'),
+  doc: svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'),
+  refresh: svg('<polyline points="21 3 21 9 15 9"/><path d="M3 12a9 9 0 0 1 15-6.7L21 9"/><polyline points="3 21 3 15 9 15"/><path d="M21 12a9 9 0 0 1-15 6.7L3 15"/>'),
+  eye: svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'),
+  shield: svg('<path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/>'),
+  monitor: svg('<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>'),
+  trash: svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'),
+  plus: svg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
+  edit: svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/>'),
+  filter: svg('<polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5"/>'),
+  sort: svg('<polyline points="3 7 6 4 9 7"/><line x1="6" y1="4" x2="6" y2="20"/><line x1="13" y1="6" x2="21" y2="6"/><line x1="13" y1="12" x2="19" y2="12"/><line x1="13" y1="18" x2="17" y2="18"/>'),
+  dots: svg('<circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/>'),
+  check: svg('<polyline points="20 6 9 17 4 12"/>'),
+  mappin: svg('<path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/>'),
+  mail: svg('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 6 10 7L22 6"/>'),
+  database: svg('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'),
+  target: svg('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>'),
+  transfer: svg('<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>'),
+  download: svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
+  copy: svg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+  move: svg('<polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>'),
+  external: svg('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'),
+  gauge: svg('<path d="M12 14a4 4 0 1 0-4-4"/><circle cx="12" cy="12" r="9"/>'),
+  trendup: svg('<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>'),
+  alert: svg('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/>'),
+  chevd: svg('<polyline points="6 9 12 15 18 9"/>'),
+  chevr: svg('<polyline points="9 6 15 12 9 18"/>'),
+  userx: svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="22" y2="13"/><line x1="22" y1="8" x2="17" y2="13"/>'),
+  approve: svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>'),
+};
+const ic = n => ICONS[n] || '';
+
+/* ----------------- DATA (test) ----------------- */
+const MODELS = [
+  {id:'tst-001', name:'Test Model A', legal:'Test User A', user:'testmodela', email:'test-a@example.com',
+   loc:'Test City A, Country', status:'Approved', avail:'high', progress:80, created:'6/17/2026', files:5, template:'Default', initial:'A', avClass:'purple'},
+  {id:'tst-002', name:'Test Model B', legal:'Test User B', user:'testmodelb', email:'test-b@example.com',
+   loc:'Test City B, Country', status:'Approved', avail:'medium', progress:65, created:'6/15/2026', files:0, template:null, initial:'B', avClass:''},
+  {id:'tst-003', name:'Test Model C', legal:'Test User C', user:'testmodelc', email:'test-c@example.com',
+   loc:'Test City C, Country', status:'Pending', avail:'low', progress:40, created:'6/16/2026', files:0, template:null, initial:'C', avClass:'amberbg'},
+];
+const USERS = [
+  {init:'A',name:'Administrator',role:'Admin',email:'admin@example.com',assign:'System Admin',assignSub:'Full access'},
+  {init:'A',name:'Test Model A',role:'Model',email:'test-a@example.com',assign:'Standard User',assignSub:'Model'},
+  {init:'B',name:'Test Model B',role:'Model',email:'test-b@example.com',assign:'Standard User',assignSub:'Model'},
+  {init:'C',name:'Test Model C',role:'Model',email:'test-c@example.com',assign:'Standard User',assignSub:'Model'},
+  {init:'E',name:'Test Employee',role:'Employee',email:'employee@example.com',assign:'Chat Manager',assignSub:'Chatting Manager'},
+  {init:'T',name:'Test Admin 2',role:'Admin',email:'admin2@example.com',assign:'System Admin',assignSub:'Full access'},
+];
+const TASKS = [
+  {title:'Test Task 1', desc:'Sample content brief for the free feed…', type:'Media', status:'todo', prio:'medium', who:'Test Model A, Test Model B', due:'No due date', created:'6/17/2026'},
+  {title:'Test Task 2', desc:'', type:'Video', status:'todo', prio:'high', who:'Test Model B', due:'No due date', created:'6/16/2026'},
+  {title:'Test Task 3', desc:'', type:'Media', status:'todo', prio:'medium', who:'Test Model A', due:'No due date', created:'5/25/2026'},
+];
+
+/* ----------------- HELPERS ----------------- */
+const $ = s=>document.querySelector(s);
+function roleBadge(r){const m={Admin:'b-admin',Model:'b-model',Employee:'b-emp'};return `<span class="badge ${m[r]}">${r}</span>`;}
+function availBadge(a){const m={high:'b-green',medium:'b-amber',low:'b-red'};return `<span class="badge ${m[a]}">${a}</span>`;}
+function statusBadge(s){return s==='Approved'?`<span class="badge b-green">${ic('check')} Approved</span>`:`<span class="badge b-amber">${s}</span>`;}
+function head(icon,title,sub,right){return `<div class="page-head">
+  <div><h1><span class="head-ic">${ic(icon)}</span> ${title}</h1>${sub?`<p>${sub}</p>`:''}</div>
+  ${right?`<div class="btn-row">${right}</div>`:''}</div>`;}
+function stat(t,v,s,cls,icon){const trend=cls==='up'?ic('trendup'):cls==='warn'?ic('alert'):'';
+  return `<div class="stat"><div class="stat-top"><span class="stat-label">${t}</span><span class="stat-ic">${icon?ic(icon):''}</span></div>
+  <div class="v">${v}</div><div class="s ${cls||''}">${trend}${s}</div></div>`;}
+
+/* ----------------- PAGES ----------------- */
+const PAGES = {};
+
+PAGES.overview = ()=>`
+  ${head('grid','Overview','Snapshot of your models, tasks and content workflow')}
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+    ${stat('Total Models','3','+3 this period','up','users')}
+    ${stat('Active Tasks','3','All on time','up','cal')}
+    ${stat('Completion Rate','0%','Needs attention','warn','pie')}
+    ${stat('Avg Response Time','24h','Fast responses','up','clock')}
+  </div>
+  <div class="twocol">
+    <div class="card pad">
+      <div class="panel-title">${ic('star')} Recent Models</div>
+      <div class="panel-sub">Latest creators you manage</div>
+      ${MODELS.map(m=>`<div class="mlist-item"><div class="av ${m.avClass}">${m.initial}</div>
+        <div class="meta"><div class="nm">${m.name} <span class="sub">(${m.legal})</span></div><div class="st">${m.loc}</div></div>
+        ${statusBadge(m.status)}</div>`).join('')}
+    </div>
+    <div class="card pad">
+      <div class="panel-title">${ic('clip')} Recent Tasks</div>
+      <div class="panel-sub">What's in the pipeline</div>
+      ${TASKS.map(t=>`<div class="mlist-item"><div class="av">${ic('clip')}</div>
+        <div class="meta"><div class="nm">${t.title}</div><div class="st">${t.type} · ${t.who}</div></div>
+        <span class="badge b-todo"><span class="dot"></span> ${t.status}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+const USER_TABS=[
+  {key:'All',label:'All',match:()=>true},
+  {key:'Models',label:'Models',match:u=>u.role==='Model'},
+  {key:'Employees',label:'Employees',match:u=>u.role==='Employee'},
+  {key:'Staff',label:'Staff',match:u=>u.role==='Admin'},
+];
+let userTab='All';
+function userTabDef(){return USER_TABS.find(t=>t.key===userTab);}
+function getUsers(){return USERS.filter(userTabDef().match);}
+PAGES.users = ()=>`
+  <div class="page-head">
+    <div><h1>Manage All Users</h1><p>View and manage user accounts, roles, and permissions</p></div>
+    <div class="btn-row"><button class="btn">${ic('gauge')} Account Quota</button><button class="btn dark">${ic('plus')} Create Account</button></div>
+  </div>
+  <div class="tabs" id="user-tabs" style="max-width:560px">
+    ${USER_TABS.map(t=>`<button class="${userTab===t.key?'active':''}" onclick="setUserTab('${t.key}')">${t.label} (${USERS.filter(t.match).length})</button>`).join('')}
+  </div>
+  <div class="card pad">
+    <div class="panel-title" id="user-title">${userTabDef().label} Users (${getUsers().length})</div>
+    <div class="panel-sub">View and manage all registered users in the system.</div>
+    <table class="tbl">
+      <thead><tr><th>User Info</th><th>Department(s)</th><th>Assignment / Manages</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody id="user-body">${userRows()}</tbody>
+    </table>
+  </div>`;
+
+function userRows(){const list=getUsers();
+  if(!list.length) return `<tr><td colspan="4"><div class="empty">${ic('users')}<div>No users in this category.</div></div></td></tr>`;
+  return list.map(u=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:12px"><div class="av">${u.init}</div>
+      <div><div class="u-name">${u.name} ${roleBadge(u.role)}</div><div class="u-mail">${u.email}</div></div></div></td>
+    <td><div class="muted">No departments</div><div class="sub">Not assigned</div></td>
+    <td><div class="u-name">${u.assign}</div><div class="sub">${u.assignSub}</div></td>
+    <td style="text-align:right"><div style="display:inline-flex;gap:5px">
+      <button class="btn icon">${ic('eye')}</button><button class="btn icon">${ic('shield')}</button>
+      <button class="btn icon">${ic('monitor')}</button><button class="btn icon danger">${ic('trash')}</button></div></td>
+  </tr>`).join('');}
+
+function setUserTab(k){userTab=k;
+  $('#user-body').innerHTML=userRows();
+  $('#user-title').textContent=`${userTabDef().label} Users (${getUsers().length})`;
+  [...document.querySelectorAll('#user-tabs button')].forEach((b,i)=>b.classList.toggle('active',USER_TABS[i].key===k));}
+
+let modelView = 'list';
+let modelStatusFilter = 'All';
+let modelFiltersOpen = false;
+PAGES.models = ()=>`
+  <div class="page-head">
+    <div><h1><span class="head-ic">${ic('users')}</span> Manage Models <span class="countbadge">${MODELS.length} total</span></h1></div>
+    <div class="btn-row"><button class="btn" onclick="go('tasks')">${ic('clip')} Model Tasks</button><button class="btn">${ic('refresh')} Refresh</button></div>
+  </div>
+  <div class="card pad" style="margin-bottom:18px">
+    <div class="toolbar">
+      <div class="search">${ic('search')}<input placeholder="Search by name, email, or username..." /></div>
+      <div class="selectish ${modelFiltersOpen?'on':''}" id="filters-btn" onclick="toggleFilters()">${ic('filter')} Filters</div>
+      <div class="selectish">Name <span class="chev">${ic('chevd')}</span></div>
+      <div class="view-toggle">
+        <button id="vt-list" class="${modelView==='list'?'active':''}" onclick="setModelView('list')">${ic('sort')}</button>
+        <button id="vt-grid" class="${modelView==='grid'?'active':''}" onclick="setModelView('grid')">${ic('grid')}</button>
+      </div>
+    </div>
+    <div id="filter-row" class="filter-row ${modelFiltersOpen?'':'hide'}">
+      <div class="filt"><label>Status</label>
+        <select id="status-filter" onchange="setStatusFilter(this.value)">
+          <option ${modelStatusFilter==='All'?'selected':''}>All</option>
+          <option ${modelStatusFilter==='Pending'?'selected':''}>Pending</option>
+          <option ${modelStatusFilter==='Approved'?'selected':''}>Approved</option>
+          <option ${modelStatusFilter==='Launched'?'selected':''}>Launched</option>
+        </select></div>
+      <div class="filt"><label>Age</label>
+        <select><option>All Ages</option><option>18-25</option><option>26-35</option><option>36+</option></select></div>
+      <button class="btn sm" onclick="clearFilters()">${ic('refresh')} Clear Filters</button>
+    </div>
+  </div>
+  <div class="card pad">
+    <div class="panel-title">Model List (<span id="model-count">${getFilteredModels().length}</span>)</div>
+    <div class="panel-sub">View and manage all model accounts. Use filters and sorting to organize the list.</div>
+    <div id="model-body">${modelBody()}</div>
+  </div>`;
+
+function getFilteredModels(){return MODELS.filter(m=>modelStatusFilter==='All'||m.status===modelStatusFilter);}
+function mStatus(m){
+  if(m.status==='Pending') return `<span class="badge b-red">${ic('userx')} Pending Approval</span>`;
+  if(m.status==='Launched') return `<span class="badge b-emp">${ic('spark')} Launched</span>`;
+  return `<span class="badge b-green">${ic('check')} Profile Complete</span>`;}
+function mActions(m){
+  if(m.status==='Pending') return `<button class="btn dark sm" onclick="approveModel('${m.id}')">${ic('approve')} Approve</button> <span class="kebab">${ic('dots')}</span>`;
+  return `<button class="btn sm">${ic('edit')} Edit</button> <span class="kebab">${ic('dots')}</span>`;}
+
+function modelBody(){const list=getFilteredModels();
+  if(!list.length) return `<div class="empty">${ic('users')}<div>No models match this filter.</div></div>`;
+  return modelView==='list'?modelTable(list):modelGrid(list);}
+
+function modelTable(list){return `<table class="tbl">
+  <thead><tr><th>Avatar</th><th>Model Info</th><th>Contact</th><th>Location</th><th>Status</th><th>Progress</th><th>Created</th><th style="text-align:right">Actions</th></tr></thead>
+  <tbody>${list.map(m=>`<tr>
+    <td><div class="av ${m.avClass}">${m.initial}</div></td>
+    <td><div class="u-name">${m.name}</div><div class="sub">(${m.legal})</div><div class="sub"># ${m.id}</div></td>
+    <td><div class="cellrow">${ic('mail')} ${m.email}</div><div class="sub">@${m.user}</div></td>
+    <td><div class="cellrow">${ic('mappin')} ${m.loc}</div></td>
+    <td>${mStatus(m)}</td>
+    <td><div class="prog"><i style="width:${m.progress}%"></i></div><div class="sub tnum">${m.progress}%</div></td>
+    <td><div class="cellrow sub">${ic('clock')} ${m.created}</div></td>
+    <td style="text-align:right">${mActions(m)}</td>
+  </tr>`).join('')}</tbody></table>`;}
+
+function modelGrid(list){return `<div class="mcards">${list.map(m=>`
+  <div class="mcard">
+    <div class="photo"><div class="bigav">${m.initial}</div><span class="tag">${mStatus(m)}</span></div>
+    <div class="body">
+      <h3>${m.name}</h3><div class="legal">(${m.legal})</div>
+      <div class="line">${ic('mail')} ${m.email}</div>
+      <div class="line">${ic('mappin')} ${m.loc}</div>
+      <div class="line" style="margin-top:12px"><div class="prog"><i style="width:${m.progress}%"></i></div> <span class="sub tnum">${m.progress}%</span></div>
+      <div style="margin-top:14px">${m.status==='Pending'?`<button class="btn dark sm" onclick="approveModel('${m.id}')">${ic('approve')} Approve</button>`:`<button class="btn sm">${ic('edit')} Edit Brand</button>`}</div>
+    </div>
+  </div>`).join('')}</div>`;}
+
+function refreshModels(){$('#model-body').innerHTML=modelBody();$('#model-count').textContent=getFilteredModels().length;}
+function setModelView(v){modelView=v;refreshModels();
+  $('#vt-list').classList.toggle('active',v==='list');$('#vt-grid').classList.toggle('active',v==='grid');}
+function setStatusFilter(v){modelStatusFilter=v;refreshModels();}
+function toggleFilters(){modelFiltersOpen=!modelFiltersOpen;
+  $('#filter-row').classList.toggle('hide',!modelFiltersOpen);$('#filters-btn').classList.toggle('on',modelFiltersOpen);}
+function clearFilters(){modelStatusFilter='All';const s=$('#status-filter');if(s)s.value='All';refreshModels();}
+function approveModel(id){const m=MODELS.find(x=>x.id===id);if(!m)return;m.status='Approved';m.progress=Math.max(m.progress,60);
+  refreshModels();toast(`${m.name} approved`,'Their drive folder has been created.');}
+
+let selModel = null;
+PAGES.drive = ()=>`
+  <div class="page-head">
+    <div><h1>Drive Manager
+      <span class="badge b-grey">${ic('database')} Google Drive</span>
+      <span class="badge b-model">Dropbox</span></h1>
+      <p>Browse and manage model drive folders and files</p></div>
+    <div class="btn-row"><button class="btn" onclick="openModal('m-req')">${ic('target')} Set requirement</button>
+      <button class="btn">${ic('transfer')} Move transfer</button></div>
+  </div>
+  <div class="twocol">
+    <div class="card pad">
+      <div class="panel-title">${ic('user')} Models <span class="countbadge">3</span></div>
+      <div class="panel-sub">Select a model to view their drive structure</div>
+      <div class="search" style="margin-bottom:10px">${ic('search')}<input placeholder="Search models..."/></div>
+      <div class="btn-row" style="margin-bottom:12px"><button class="btn sm">${ic('sort')} A-Z</button><button class="btn sm">${ic('filter')} All</button></div>
+      <div id="drive-mlist">${MODELS.map(driveModelRow).join('')}</div>
+    </div>
+    <div class="card pad">
+      <div class="panel-title">${ic('folder')} Drive Structure</div>
+      <div class="panel-sub" id="drive-sub">Select a model to view their drive structure</div>
+      <div id="drive-tree">${driveEmpty()}</div>
+    </div>
+  </div>`;
+
+function driveModelRow(m){
+  const noFolder = m.files===0 && !m.template;
+  return `<div class="mlist-item ${selModel===m.id?'active':''}" onclick="selectDriveModel('${m.id}')">
+    <div class="av ${m.avClass}">${m.initial}</div>
+    <div class="meta"><div class="nm">${m.name}</div>
+      <div class="st ${noFolder?'warn':''}">${noFolder?'No folder yet — click to set up':(m.template?('Template: '+m.template):'No template')}</div></div>
+    ${noFolder?`<button class="btn sm">Set up folder</button>`:`<span class="filecount">${m.files} files</span>`}
+  </div>`;
+}
+function driveEmpty(){return `<div class="empty">${ic('folder')}<div>Select a model from the list to view their drive structure</div></div>`;}
+function selectDriveModel(id){selModel=id;const m=MODELS.find(x=>x.id===id);
+  $('#drive-mlist').innerHTML=MODELS.map(driveModelRow).join('');
+  $('#drive-sub').textContent='Folders and files for '+m.name;
+  $('#drive-tree').innerHTML = m.files>0 ? driveTree(m) : driveEmptyFolder(m);
+}
+function driveEmptyFolder(m){return `<div class="empty">${ic('folder')}<div>No folder set up for ${m.name} yet.</div><button class="btn dark sm">Set up folder</button></div>`;}
+function driveTree(m){
+  const files=[
+    ['Content_2026-06-02_001.png','Jun 2, 2026, 09:48 PM','8.11 MB'],
+    ['Content_2026-06-02_002.png','Jun 2, 2026, 09:44 PM','9.01 MB'],
+    ['Content_2026-06-02_003.png','Jun 2, 2026, 09:44 PM','8.64 MB'],
+    ['Content_2026-06-02_004.png','Jun 2, 2026, 09:44 PM','8.78 MB'],
+    ['Content_2026-06-02_005.png','Jun 2, 2026, 09:39 PM','9.42 MB'],
+  ];
+  return `
+   <div class="tree-row"><span class="chev">${ic('chevd')}</span><span class="nm"><span class="fld">${ic('folder')}</span> <b>${m.legal}</b></span><span class="fcount-mini">0 files</span><span class="kebab">${ic('dots')}</span></div>
+   <div class="indent">
+     <div class="tree-row"><span class="chev">${ic('chevd')}</span><span class="nm"><span class="fld">${ic('folder')}</span> Root folder</span><span class="fcount-mini">5 files</span><span class="kebab">${ic('dots')}</span></div>
+     <div class="indent">
+       <div class="tree-row"><span class="chev">${ic('chevr')}</span><span class="nm"><span class="fld">${ic('folder')}</span> New Folder</span><span class="kebab" onclick="showCtx(event)">${ic('dots')}</span></div>
+       ${files.map(f=>`<div class="tree-row"><span style="width:16px"></span>
+         <span class="nm">${ic('image')} ${f[0]}</span><span class="dt">${f[1]}</span><span class="sz">${f[2]}</span>
+         <span class="kebab" onclick="showCtx(event)">${ic('dots')}</span></div>`).join('')}
+     </div>
+   </div>`;
+}
+
+const RANGES=['Last 1 day','Last 7 days','Last 30 days','Last 90 days','Last 360 days'];
+const RANGE_DATA={
+  'Last 1 day':   {models:3, mNew:'+0 today',         tasks:1, comp:'0%', resp:'18h'},
+  'Last 7 days':  {models:3, mNew:'+1 this week',      tasks:2, comp:'0%', resp:'21h'},
+  'Last 30 days': {models:3, mNew:'+3 this period',    tasks:3, comp:'0%', resp:'24h'},
+  'Last 90 days': {models:3, mNew:'+3 this quarter',   tasks:3, comp:'0%', resp:'26h'},
+  'Last 360 days':{models:3, mNew:'+3 this year',      tasks:3, comp:'0%', resp:'30h'},
+};
+let statRange='Last 30 days';
+function statKpis(){const d=RANGE_DATA[statRange];return `
+  ${stat('Total Models',d.models,d.mNew,'up','users')}
+  ${stat('Active Tasks',d.tasks,'All on time','up','cal')}
+  ${stat('Completion Rate',d.comp,'Needs attention','warn','pie')}
+  ${stat('Avg Response Time',d.resp,'Fast responses','up','clock')}`;}
+function setRange(v){statRange=v;$('#stat-kpis').innerHTML=statKpis();}
+PAGES.stats = ()=>`
+  <div class="page-head">
+    <div><h1>Model Statistics</h1><p>Comprehensive analytics and insights for model management</p></div>
+    <button class="btn">${ic('refresh')} Refresh</button>
+  </div>
+  <div style="margin-bottom:16px">
+    <select class="range-select" onchange="setRange(this.value)">
+      ${RANGES.map(r=>`<option ${r===statRange?'selected':''}>${r}</option>`).join('')}
+    </select>
+  </div>
+  <div id="stat-kpis" class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">${statKpis()}</div>
+  <div class="tabs" id="stat-tabs">
+    <button class="active" onclick="statTab('ov')">Overview</button>
+    <button onclick="statTab('ma')">Model Analytics</button>
+    <button onclick="statTab('ta')">Task Analytics</button>
+  </div>
+  <div id="stat-body">${statOverview()}</div>`;
+
+let subTabState='mg';
+function statOverview(){return `
+  <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">
+    <div class="card pad"><div class="panel-title">Model Distribution</div><div class="panel-sub">Models by approval status</div>
+      <div class="kv"><span>Approved</span><span class="badge b-grey">3</span></div>
+      <div class="kv"><span>Pending</span><span class="sub">0</span></div>
+      <div class="kv"><span>New This Period</span><span class="badge b-green">+3</span></div></div>
+    <div class="card pad"><div class="panel-title">Task Overview</div><div class="panel-sub">Task completion status</div>
+      <div class="kv"><span>Completed</span><span class="badge b-grey">0</span></div>
+      <div class="kv"><span>In Progress</span><span class="sub">0</span></div>
+      <div class="kv"><span>Overdue</span><span class="badge b-red">0</span></div></div>
+    <div class="card pad"><div class="panel-title">Content Status</div><div class="panel-sub">Content availability</div>
+      <div class="kv"><span>High Availability</span><span class="badge b-grey">1</span></div>
+      <div class="kv"><span>Medium Availability</span><span class="sub">2</span></div>
+      <div class="kv"><span>Low Availability</span><span class="badge b-red">0</span></div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+    ${stat('Completion Rate','0%','Needs improvement','warn','pie')}
+    ${stat('Avg Response Time','24h','Fast response','up','clock')}
+    ${stat('Active Tasks','3','All on track','up','doc')}
+    ${stat('Total Models','3','+3 new','up','users')}
+  </div>
+  <div class="tabs" id="sub-tabs" style="max-width:620px;margin:0 auto 18px">
+    <button class="${subTabState==='mg'?'active':''}" onclick="subTab('mg')">Model Growth</button>
+    <button class="${subTabState==='tt'?'active':''}" onclick="subTab('tt')">Task Trends</button>
+    <button class="${subTabState==='pf'?'active':''}" onclick="subTab('pf')">Performance</button>
+  </div>
+  <div id="sub-body">${subBody(subTabState)}</div>`;}
+
+function subBody(t){
+  if(t==='tt') return `<div class="card pad"><div class="panel-title">Task Trends</div>
+    <div class="panel-sub">Tasks created vs completed over time</div>${lineChart()}
+    <div class="legend"><span><i class="swatch" style="background:#5b5bd6"></i>Tasks Created</span><span><i class="swatch" style="background:#2f9e63"></i>Tasks Completed</span></div></div>`;
+  if(t==='pf') return `<div class="card pad"><div class="panel-title">Performance</div>
+    <div class="panel-sub">Completion rate vs response time across models</div>${radarChart()}</div>`;
+  return `<div class="card pad"><div class="panel-title">Model Growth Over Time</div>
+    <div class="panel-sub">Number of models registered over time</div>${lineChart(true)}</div>`;
+}
+function subTab(t){subTabState=t;$('#sub-body').innerHTML=subBody(t);
+  [...document.querySelectorAll('#sub-tabs button')].forEach((b,i)=>b.classList.toggle('active',['mg','tt','pf'][i]===t));}
+
+function lineChart(single){
+  const w=820,h=240,pad=34;
+  const months=['Jan','Feb','Mar','Apr','May','Jun'];
+  const created=[0,0,0,0,1,2], completed=[0,0,0,0,0,0];
+  const maxY=2, X=i=>pad+i*((w-pad*2)/(months.length-1)), Y=v=>h-pad-(v/maxY)*(h-pad*2);
+  const path=d=>d.map((v,i)=>`${i?'L':'M'}${X(i)} ${Y(v)}`).join(' ');
+  const area=`${path(created)} L${X(months.length-1)} ${h-pad} L${X(0)} ${h-pad} Z`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block">
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b5bd6" stop-opacity=".18"/><stop offset="1" stop-color="#5b5bd6" stop-opacity="0"/></linearGradient></defs>
+    ${[0,0.5,1,1.5,2].map(v=>`<line x1="${pad}" y1="${Y(v)}" x2="${w-pad}" y2="${Y(v)}" stroke="#f1f1f3"/><text x="6" y="${Y(v)+4}" font-size="10" fill="#a1a1aa">${v}</text>`).join('')}
+    <path d="${area}" fill="url(#ag)"/>
+    <path d="${path(created)}" fill="none" stroke="#5b5bd6" stroke-width="2.5"/>
+    ${single?'':`<path d="${path(completed)}" fill="none" stroke="#2f9e63" stroke-width="2.5"/>`}
+    ${months.map((mn,i)=>`<text x="${X(i)}" y="${h-10}" font-size="11" fill="#a1a1aa" text-anchor="middle">${mn}</text>`).join('')}
+  </svg>`;
+}
+function radarChart(){
+  const cx=170,cy=160,R=120;
+  const verts=[[cx,cy-R],[cx+R*0.866,cy+R*0.5],[cx-R*0.866,cy+R*0.5]];
+  const ring=s=>verts.map(v=>`${cx+(v[0]-cx)*s},${cy+(v[1]-cy)*s}`).join(' ');
+  const labels=[['Model A',cx,cy-R-10],['Model B',cx+R*0.866+22,cy+R*0.5+6],['Model C',cx-R*0.866-22,cy+R*0.5+6]];
+  return `<div style="display:flex;justify-content:center"><svg viewBox="0 0 340 320" width="100%" style="max-width:460px">
+    ${[0.25,0.5,0.75,1].map(s=>`<polygon points="${ring(s)}" fill="none" stroke="#ededf0"/>`).join('')}
+    ${verts.map(v=>`<line x1="${cx}" y1="${cy}" x2="${v[0]}" y2="${v[1]}" stroke="#ededf0"/>`).join('')}
+    <polygon points="${ring(0.95)}" fill="rgba(91,91,214,.16)" stroke="#5b5bd6" stroke-width="2.5"/>
+    <circle cx="${cx}" cy="${cy}" r="3.5" fill="#5b5bd6"/>
+    ${labels.map(l=>`<text x="${l[1]}" y="${l[2]}" font-size="12" fill="#71717a" text-anchor="middle">${l[0]}</text>`).join('')}
+  </svg></div>
+  <div class="legend"><span><i class="swatch" style="background:#5b5bd6"></i>Completion Rate (%)</span><span><i class="swatch" style="background:#2f9e63"></i>Response Time (hours)</span></div>`;
+}
+
+function statModel(){return `
+  <div class="card pad" style="margin-bottom:18px"><div class="toolbar">
+    <div class="search">${ic('search')}<input placeholder="Search models..."/></div>
+    <div class="selectish">All Status <span class="chev">${ic('chevd')}</span></div>
+    <div class="selectish">All Availability <span class="chev">${ic('chevd')}</span></div>
+    <div class="selectish">Name <span class="chev">${ic('chevd')}</span></div>
+    <div class="view-toggle"><button class="active">${ic('grid')}</button><button>${ic('sort')}</button></div>
+  </div></div>
+  <div class="card pad" style="margin-bottom:18px"><div class="panel-title">Model Performance Overview</div>
+    <div class="panel-sub">Performance metrics for top 10 models</div>${radarChart()}</div>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+  ${MODELS.map(m=>`<div class="card pad"><div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <div class="av ${m.avClass}">${m.initial}</div><div><div class="u-name">${m.name}</div><div class="sub">${m.email}</div></div></div>
+    <div class="kv"><span class="muted">Status</span><span class="badge b-grey">${m.status}</span></div>
+    <div class="kv"><span class="muted">Completion Rate</span><span style="color:#dc2626">0%</span></div>
+    <div class="kv"><span class="muted">Response Time</span><span>0h</span></div>
+    <div class="kv"><span class="muted">Total Tasks</span><span>0</span></div>
+    <div class="kv"><span class="muted">Availability</span>${availBadge(m.avail)}</div></div>`).join('')}
+  </div>
+  <div class="sub" style="text-align:center;margin-top:14px">Showing 1 to 3 of 3 models</div>`;}
+
+function statTask(){return `<div class="grid" style="grid-template-columns:2fr 1fr;margin-bottom:18px">
+  <div class="card pad"><div class="panel-title">Tasks by Priority</div><div class="panel-sub">Distribution of tasks by priority level</div>
+    <div class="bars"><div class="bar" style="height:50%;background:linear-gradient(180deg,#e06a6e,#e5484d)">1</div><div class="bar" style="height:100%;background:linear-gradient(180deg,#e0b13a,#d6a020)">2</div><div class="bar" style="height:4%;background:#e4e4e7"></div></div>
+    <div class="legend"><span>High Priority</span><span>Medium Priority</span><span>Low Priority</span></div></div>
+  <div class="card pad" style="display:flex;flex-direction:column;align-items:center"><div class="panel-title" style="align-self:flex-start">Status Distribution</div>
+    <div class="panel-sub" style="align-self:flex-start">Current task status breakdown</div>
+    <div class="donut"></div>
+    <div class="legend"><span><i class="swatch" style="background:#2f9e63"></i>Completed</span><span><i class="swatch" style="background:#3a5bd9"></i>In Progress</span><span><i class="swatch" style="background:#d6a020"></i>To Do</span><span><i class="swatch" style="background:#dc2626"></i>Overdue</span></div></div>
+</div>
+<div class="card pad"><div class="panel-title">Task Details</div><div class="panel-sub">Detailed view of all tasks with filtering</div>
+  <table class="tbl"><thead><tr><th>Task</th><th>Type</th><th>Status</th><th>Priority</th><th>Assigned To</th><th>Due Date</th><th>Created</th></tr></thead>
+  <tbody>${TASKS.map(t=>`<tr><td><div class="u-name">${t.title}</div><div class="sub">${t.desc||''}</div></td>
+    <td><span class="badge b-model">${t.type}</span></td>
+    <td><span class="badge b-todo"><span class="dot"></span> ${t.status}</span></td>
+    <td><span class="badge ${t.prio==='high'?'b-red':t.prio==='medium'?'b-amber':'b-model'}">${t.prio}</span></td>
+    <td>${t.who}</td><td class="sub">${t.due}</td><td class="sub">${t.created}</td></tr>`).join('')}</tbody></table></div>`;}
+
+function statTab(t){const map={ov:statOverview,ma:statModel,ta:statTask};
+  $('#stat-body').innerHTML=map[t]();
+  [...document.querySelectorAll('#stat-tabs button')].forEach((b,i)=>b.classList.toggle('active',['ov','ma','ta'][i]===t));}
+
+PAGES.register = ()=>soon('uplus','Register Models','Registration links, contract signing, ID upload & approval flow.','Phase 2 — for now you add models manually.');
+PAGES.templates = ()=>soon('folders','Model Drive Templates','Visual Template Studio to design reusable root-folder structures (SFW/NSFW, access toggles).','Phase 2 — for v1 folders are created from tasks.');
+PAGES.medialib = ()=>soon('image','Media Library','A team-facing content browser layered on Drive.','Phase 2.');
+PAGES.tasks = ()=>soon('clip','Model Tasks','Assign content plans, set task types & auto-create upload folders.','Building this next — last core screen.');
+PAGES.appview = ()=>soon('phone','Creator App View','What a model sees on login: her task queue + upload.','Building this last.');
+
+function soon(icon,title,sub,note){return `${head(icon,title,sub)}
+  <div class="notice">${ic('clip')} ${note}</div>
+  <div class="card"><div class="soon-wrap"><div class="big">${ic(icon)}</div>
+  <div class="st">${title}</div><div>${sub}</div></div></div>`;}
+
+/* ----------------- TOAST ----------------- */
+function toast(title,sub){const w=$('#toast-wrap');
+  const t=document.createElement('div');t.className='toast';
+  t.innerHTML=`<div class="tk">${ic('check')}</div><div><div class="tt">${title}</div>${sub?`<div class="ts">${sub}</div>`:''}</div>`;
+  w.appendChild(t);
+  setTimeout(()=>{t.style.transition='opacity .3s,transform .3s';t.style.opacity='0';t.style.transform='translateY(8px)';
+    setTimeout(()=>t.remove(),300);},2600);}
+
+/* ----------------- ROUTER ----------------- */
+function go(page){
+  selModel=null; modelView='list'; subTabState='mg'; modelStatusFilter='All'; modelFiltersOpen=false; userTab='All'; statRange='Last 30 days';
+  const c=$('#content');
+  c.innerHTML=(PAGES[page]||PAGES.overview)();
+  c.classList.remove('enter'); void c.offsetWidth; c.classList.add('enter');
+  document.querySelectorAll('#nav a[data-page]').forEach(a=>a.classList.toggle('active',a.dataset.page===page));
+  window.scrollTo(0,0);
+}
+
+/* ----------------- MODALS / CTX ----------------- */
+function openModal(id){$('#'+id).classList.add('open');}
+function closeModal(id){$('#'+id).classList.remove('open');}
+const ctx=$('#ctx');
+function buildCtx(){ctx.innerHTML=`
+  <button>${ic('external')} Open in Google Drive</button>
+  <button>${ic('eye')} Preview</button>
+  <button>${ic('download')} Download</button>
+  <button>${ic('copy')} Copy</button>
+  <button>${ic('move')} Move</button>
+  <div class="sep"></div>
+  <button class="danger">${ic('trash')} Delete</button>`;}
+function showCtx(e){e.stopPropagation();ctx.style.display='block';
+  const x=Math.min(e.clientX,window.innerWidth-214),y=Math.min(e.clientY,window.innerHeight-290);
+  ctx.style.left=x+'px';ctx.style.top=y+'px';}
+
+/* ----------------- INIT ----------------- */
+function injectIcons(){
+  document.querySelectorAll('#nav a[data-ic]').forEach(a=>{const i=ICONS[a.dataset.ic]; if(i) a.insertAdjacentHTML('afterbegin',i);});
+  $('#acct-chev').innerHTML=ic('chevr');
+}
+document.querySelectorAll('#nav a[data-page]').forEach(a=>a.addEventListener('click',()=>go(a.dataset.page)));
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+document.addEventListener('click',()=>ctx.style.display='none');
+
+injectIcons();
+buildCtx();
+go('overview');
+</script>
+</body>
+</html>

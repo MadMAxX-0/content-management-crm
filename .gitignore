@@ -1,0 +1,28 @@
+# ── Python / backend ──
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+backend/token.json
+*.egg-info/
+
+# ── Node / frontend ──
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Env & secrets (NEVER commit) ──
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env.local
+
+# ── OS / editor ──
+.DS_Store
+*.log
+.vercel/
