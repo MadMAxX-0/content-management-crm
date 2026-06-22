@@ -22,10 +22,13 @@ export default function Sidebar({ open }: { open?: boolean }) {
   const path = usePathname();
   const { me, signOut, authEnabled } = useAuth();
   const isCreator = me?.role === "creator";
+  const isVa = me?.role === "va";
 
-  // Creators only ever see their own app — give them a minimal rail.
+  // Creators see only their own app; VAs see only Model Tasks — minimal rails.
   const nav = isCreator
     ? [{ group: "Creator" }, { href: "/app", icon: "phone", label: "My Tasks" }]
+    : isVa
+    ? [{ group: "Content" }, { href: "/tasks", icon: "clip", label: "Model Tasks" }]
     : NAV;
 
   return (
@@ -33,8 +36,8 @@ export default function Sidebar({ open }: { open?: boolean }) {
       <div className="acct">
         <div className="avatar">{(me?.name || "Y").charAt(0).toUpperCase()}</div>
         <div>
-          <div className="nm">{isCreator ? me?.name : "Youtopia CRM"}</div>
-          <div className="rl">{isCreator ? "Creator" : "Admin"}</div>
+          <div className="nm">{isCreator || isVa ? me?.name : "Youtopia CRM"}</div>
+          <div className="rl">{isCreator ? "Creator" : isVa ? "VA" : "Admin"}</div>
         </div>
       </div>
       <nav className="nav">
@@ -54,7 +57,7 @@ export default function Sidebar({ open }: { open?: boolean }) {
             </Link>
           )
         )}
-        {!isCreator && (
+        {!isCreator && !isVa && (
           <>
             <div className="divider" />
             <Link href="#" className="soon"><Icon name="spark" /> X AI <span className="pill">AI</span></Link>

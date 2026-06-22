@@ -15,6 +15,9 @@ import db
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 ADMIN_EMAILS = {e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()}
+# VAs: scoped access to the Model Tasks section only (create/edit/delete tasks),
+# no Drive / models / settings. Temporary — remove emails here to revoke.
+VA_EMAILS = {e.strip().lower() for e in os.getenv("VA_EMAILS", "").split(",") if e.strip()}
 
 
 def enabled() -> bool:
@@ -38,10 +41,12 @@ def verify_token(token: str) -> str | None:
 
 
 def resolve(email: str | None) -> dict:
-    """Map an email to a role. admin (allowlist) > creator (model.email) > none."""
+    """Map an email to a role. admin > va > creator (model.email) > none."""
     email = (email or "").lower()
     if email and email in ADMIN_EMAILS:
         return {"email": email, "role": "admin", "model_id": None, "name": "Admin"}
+    if email and email in VA_EMAILS:
+        return {"email": email, "role": "va", "model_id": None, "name": "VA"}
     if email:
         m = db.get_model_by_email(email)
         if m:

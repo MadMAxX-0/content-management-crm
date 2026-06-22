@@ -37,7 +37,7 @@ async function req(path: string, init?: RequestInit) {
   throw lastErr;
 }
 
-export type Me = { email: string | null; role: "admin" | "creator" | "none"; model_id: string | null; name: string };
+export type Me = { email: string | null; role: "admin" | "va" | "creator" | "none"; model_id: string | null; name: string };
 
 export type DriveStatus = {
   configured: boolean;

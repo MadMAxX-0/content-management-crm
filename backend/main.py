@@ -54,6 +54,13 @@ def require_admin(user: dict = Depends(current_user)) -> dict:
     return user
 
 
+def require_tasks(user: dict = Depends(current_user)) -> dict:
+    """Model Tasks section: admins and VAs only (VAs are scoped to tasks)."""
+    if user["role"] not in ("admin", "va"):
+        raise HTTPException(403, "Not allowed")
+    return user
+
+
 @app.get("/")
 def index():
     return FileResponse(STATIC_DIR / "index.html")
@@ -223,7 +230,7 @@ def _require_db():
 
 # ───────────────────── Models (DB-backed) ─────────────────────
 @app.get("/api/models")
-def models_list(user: dict = Depends(require_admin)):
+def models_list(user: dict = Depends(require_tasks)):
     if not db.enabled():
         return []
     return db.list_models()
@@ -250,7 +257,7 @@ def models_create(payload: dict = Body(...), user: dict = Depends(require_admin)
 def model_tasks(model_id: str, user: dict = Depends(current_user)):
     """Tasks assigned to a model — powers the creator app view.
     Creators may only read their own model's tasks; admins read any."""
-    if user["role"] != "admin" and user.get("model_id") != model_id:
+    if user["role"] not in ("admin", "va") and user.get("model_id") != model_id:
         raise HTTPException(403, "Not your tasks")
     if not db.enabled():
         return []
@@ -303,14 +310,14 @@ def models_delete(model_id: str, user: dict = Depends(require_admin)):
 
 # ───────────────────── Tasks (DB-backed) ─────────────────────
 @app.get("/api/tasks")
-def tasks_list(templates: int = 0, user: dict = Depends(require_admin)):
+def tasks_list(templates: int = 0, user: dict = Depends(require_tasks)):
     if not db.enabled():
         return []
     return db.list_tasks(templates=bool(templates))
 
 
 @app.post("/api/tasks")
-def tasks_create(payload: dict = Body(...), user: dict = Depends(require_admin)):
+def tasks_create(payload: dict = Body(...), user: dict = Depends(require_tasks)):
     """Create a task (or template). For real tasks, auto-create the upload folder
     inside each assigned model's Drive (the registration trigger of content)."""
     _require_db()
@@ -350,7 +357,7 @@ def task_submit(task_id: str, model_id: str = Query(...), user: dict = Depends(c
 
 
 @app.post("/api/tasks/{task_id}/review")
-def task_review(task_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
+def task_review(task_id: str, payload: dict = Body(...), user: dict = Depends(require_tasks)):
     """Manager approves or requests changes (per-slot notes in `review`)."""
     _require_db()
     mid = payload.get("model_id")
@@ -362,7 +369,7 @@ def task_review(task_id: str, payload: dict = Body(...), user: dict = Depends(re
 
 
 @app.delete("/api/tasks/{task_id}")
-def tasks_delete(task_id: str):
+def tasks_delete(task_id: str, user: dict = Depends(require_tasks)):
     _require_db()
     db.delete_task(task_id)
     return {"deleted": True}

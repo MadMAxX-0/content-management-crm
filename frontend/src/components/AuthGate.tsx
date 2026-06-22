@@ -28,6 +28,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 // Routes a creator is allowed to see. Everything else is admin-only.
 const isCreatorPath = (p: string) => p === "/app" || p.startsWith("/app/");
+// VAs are scoped to the Model Tasks section only.
+const isVaPath = (p: string) => p === "/tasks" || p.startsWith("/tasks/");
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -69,6 +71,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
     if (me?.role === "creator" && !isCreatorPath(path)) router.replace("/app");
+    if (me?.role === "va" && !isVaPath(path)) router.replace("/tasks");
     if (me?.role === "admin" && path === "/login") router.replace("/");
   }, [ready, hasSession, me, path, router]);
 
@@ -99,8 +102,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Creator on an admin path (mid-redirect) → render nothing briefly
+  // Creator/VA on a disallowed path (mid-redirect) → render nothing briefly
   if (me?.role === "creator" && !isCreatorPath(path)) return null;
+  if (me?.role === "va" && !isVaPath(path)) return null;
 
   return <AuthContext.Provider value={value}><Shell>{children}</Shell></AuthContext.Provider>;
 }
