@@ -379,6 +379,23 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 .di-sub{font-size:12px;color:var(--muted)}
 .di-date{font-size:12px;color:var(--muted2);white-space:nowrap}
 
+/* ───────────── Auth (login / gate) ───────────── */
+.auth-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  padding:24px;background:radial-gradient(1200px 600px at 50% -10%,#eef0ff,var(--bg));color:var(--ink);font-weight:500}
+.auth-screen .spin{width:20px;height:20px}
+.auth-card{width:100%;max-width:380px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh-lg);padding:28px}
+.auth-card h2{margin:0 0 8px;font-size:19px;font-weight:680}
+.auth-card p{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 18px}
+.auth-card .fld-l{font-size:12.5px;font-weight:600;color:#3f3f46;margin:0 0 6px;display:block}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.auth-brand .avatar{width:44px;height:44px;border-radius:13px;font-size:18px}
+.auth-brand .nm{font-weight:700;font-size:16px;letter-spacing:-.01em}
+.auth-brand .rl{font-size:12.5px;color:var(--muted)}
+.nav-signout{margin-top:14px;display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;cursor:pointer;
+  font:inherit;font-size:13.5px;font-weight:500;color:rgba(255,255,255,.62);padding:9px 12px;border-radius:10px;text-align:left;transition:background .12s,color .12s}
+.nav-signout:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-signout svg{width:17px;height:17px}
+
 /* ───────────── Creator App view — soft pink theme ───────────── */
 .creator{
   --pink:#f6478f; --pink-dk:#e21d75; --pink-soft:#fff1f7; --pink-softln:#fcd2e5; --pink-tx:#c41863;

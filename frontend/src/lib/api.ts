@@ -1,16 +1,30 @@
+import { supabase } from "./supabase";
+
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const apiBase = API;
 
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!supabase) return {};
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function req(path: string, init?: RequestInit) {
   const method = (init?.method || "GET").toUpperCase();
   const safe = method === "GET";
+  const auth = await authHeaders();
   let lastErr: unknown;
   // Retry only idempotent GETs on transient network errors (e.g. a dev-server
   // restart dropping an in-flight request). Never retry POST/PATCH/DELETE.
   for (let attempt = 0; attempt < (safe ? 2 : 1); attempt++) {
     try {
-      const res = await fetch(`${API}${path}`, { cache: "no-store", ...init });
+      const res = await fetch(`${API}${path}`, {
+        cache: "no-store",
+        ...init,
+        headers: { ...auth, ...(init?.headers || {}) },
+      });
       if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
       return res.json();
     } catch (e) {
@@ -22,6 +36,8 @@ async function req(path: string, init?: RequestInit) {
   }
   throw lastErr;
 }
+
+export type Me = { email: string | null; role: "admin" | "creator" | "none"; model_id: string | null; name: string };
 
 export type DriveStatus = {
   configured: boolean;
@@ -60,6 +76,7 @@ export type ModelRow = {
 };
 
 export const api = {
+  me: (): Promise<Me> => req("/api/me"),
   status: (): Promise<DriveStatus> => req("/api/status"),
   tree: (): Promise<{ root: DriveItem | null; folders: DriveItem[] }> => req("/api/tree"),
   folder: (id: string): Promise<{ items: DriveItem[] }> => req(`/api/folder/${id}`),

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import AuthGate from "@/components/AuthGate";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
@@ -18,10 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="app">
-          <Sidebar />
-          <main className="main">{children}</main>
-        </div>
+        <AuthGate>{children}</AuthGate>
       </body>
     </html>
   );

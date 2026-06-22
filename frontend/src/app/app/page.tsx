@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Icon from "@/components/Icon";
 import { api, ModelRow, TaskRow, DriveItem, FOLDER_MIME, apiBase, fmtDate } from "@/lib/api";
 import { slotsForTask, statusMeta, TYPE_LABEL, TYPE_ICON, Slot } from "@/lib/slots";
+import { useAuth } from "@/components/auth-context";
 
 const isImg = (m?: string) => !!m && m.startsWith("image/");
 
@@ -13,13 +14,23 @@ export default function CreatorApp() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [folders, setFolders] = useState<Record<string, string>>({}); // folderName -> id
   const [loading, setLoading] = useState(false);
+  const { me } = useAuth();
+  const isCreator = me?.role === "creator";
 
   useEffect(() => {
-    api.listModels().then((m) => {
-      setModels(m);
-      if (m.length) setModelId((cur) => cur || m[0].id);
-    });
-  }, []);
+    if (!me) return;
+    if (isCreator && me.model_id) {
+      // Creators are locked to their own model — no admin model list.
+      setModels([{ id: me.model_id, name: me.name, status: "Approved", progress: 0 } as ModelRow]);
+      setModelId(me.model_id);
+    } else {
+      api.listModels().then((m) => {
+        setModels(m);
+        if (m.length) setModelId((cur) => cur || m[0].id);
+      }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
 
   const loadTasks = useCallback(async (id: string) => {
     if (!id) return;
@@ -50,13 +61,15 @@ export default function CreatorApp() {
           <h1><Icon name="phone" /> Creator App</h1>
           <p>The creator's view — assigned requests and content upload.</p>
         </div>
-        <div className="cv-as">
-          <span className="sub">Viewing as</span>
-          <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
-            {models.length === 0 && <option value="">No models</option>}
-            {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
+        {!isCreator && (
+          <div className="cv-as">
+            <span className="sub">Viewing as</span>
+            <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
+              {models.length === 0 && <option value="">No models</option>}
+              {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {!open ? (

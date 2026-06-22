@@ -2,11 +2,12 @@
 import os
 from pathlib import Path
 
-from fastapi import Body, FastAPI, File, HTTPException, Query, Response, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Header, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+import auth
 import db
 import drive
 
@@ -37,6 +38,20 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
 
 # in-memory OAuth state (single-user agency account for now)
 _oauth_state = {"value": None}
+
+
+# ───────────────────── auth dependencies ─────────────────────
+def current_user(authorization: str = Header(default="")) -> dict:
+    user = auth.user_from_header(authorization)
+    if not user or user["role"] == "none":
+        raise HTTPException(401, "Not authenticated")
+    return user
+
+
+def require_admin(user: dict = Depends(current_user)) -> dict:
+    if user["role"] != "admin":
+        raise HTTPException(403, "Admins only")
+    return user
 
 
 @app.get("/")
@@ -101,20 +116,20 @@ def status():
 
 
 @app.post("/api/disconnect")
-def api_disconnect():
+def api_disconnect(user: dict = Depends(require_admin)):
     drive.disconnect()
     return {"connected": False}
 
 
 # ───────────────────── CRM structure / folders ─────────────────────
 @app.post("/api/setup")
-def setup():
+def setup(user: dict = Depends(require_admin)):
     _require_connection()
     return drive.ensure_root_structure()
 
 
 @app.get("/api/tree")
-def tree():
+def tree(user: dict = Depends(require_admin)):
     """Return the CRM root and its top-level folders (with child counts)."""
     _require_connection()
     root = drive.get_root()
@@ -129,26 +144,26 @@ def tree():
 
 
 @app.get("/api/folder/{folder_id}")
-def folder_contents(folder_id: str):
+def folder_contents(folder_id: str, user: dict = Depends(current_user)):
     _require_connection()
     return {"items": drive.list_children(folder_id)}
 
 
 @app.post("/api/model/folder")
-def model_folder(name: str = Query(...), user_id: str = Query(...)):
+def model_folder(name: str = Query(...), user_id: str = Query(...), user: dict = Depends(require_admin)):
     """Create models/<name_userID>/Root folder/ — the registration trigger."""
     _require_connection()
     return drive.create_model_folder(name, user_id)
 
 
 @app.post("/api/folder/{parent_id}/subfolder")
-def subfolder(parent_id: str, name: str = Query(...)):
+def subfolder(parent_id: str, name: str = Query(...), user: dict = Depends(current_user)):
     _require_connection()
     return drive.create_subfolder(parent_id, name)
 
 
 @app.post("/api/folder/{folder_id}/upload")
-async def upload(folder_id: str, file: UploadFile = File(...)):
+async def upload(folder_id: str, file: UploadFile = File(...), user: dict = Depends(current_user)):
     """Creator uploads a deliverable into a task's Drive folder/subfolder."""
     _require_connection()
     content = await file.read()
@@ -156,7 +171,7 @@ async def upload(folder_id: str, file: UploadFile = File(...)):
 
 
 @app.post("/api/file/{file_id}/move")
-def move(file_id: str, dest: str = Query(...)):
+def move(file_id: str, dest: str = Query(...), user: dict = Depends(require_admin)):
     _require_connection()
     return drive.move_file(file_id, dest)
 
@@ -173,19 +188,19 @@ def file_content(file_id: str, download: int = 0):
 
 
 @app.post("/api/file/{file_id}/copy")
-def copy(file_id: str, dest: str = Query(...)):
+def copy(file_id: str, dest: str = Query(...), user: dict = Depends(require_admin)):
     _require_connection()
     return drive.copy_file(file_id, dest)
 
 
 @app.post("/api/file/{file_id}/rename")
-def rename(file_id: str, name: str = Query(...)):
+def rename(file_id: str, name: str = Query(...), user: dict = Depends(require_admin)):
     _require_connection()
     return drive.rename_file(file_id, name)
 
 
 @app.post("/api/file/{file_id}/trash")
-def trash(file_id: str):
+def trash(file_id: str, user: dict = Depends(require_admin)):
     _require_connection()
     return drive.trash_file(file_id)
 
@@ -195,6 +210,12 @@ def _require_connection():
         raise HTTPException(401, "Not connected to Google Drive.")
 
 
+@app.get("/api/me")
+def me(authorization: str = Header(default="")):
+    """Who am I? Drives the frontend login gate + role-based UI."""
+    return auth.user_from_header(authorization)
+
+
 def _require_db():
     if not db.enabled():
         raise HTTPException(400, "Supabase not configured (set DATABASE_URL).")
@@ -202,14 +223,14 @@ def _require_db():
 
 # ───────────────────── Models (DB-backed) ─────────────────────
 @app.get("/api/models")
-def models_list():
+def models_list(user: dict = Depends(require_admin)):
     if not db.enabled():
         return []
     return db.list_models()
 
 
 @app.post("/api/models")
-def models_create(payload: dict = Body(...)):
+def models_create(payload: dict = Body(...), user: dict = Depends(require_admin)):
     """Manually register a model: writes to Supabase + auto-creates its Drive folder."""
     _require_db()
     if not payload.get("name"):
@@ -226,21 +247,24 @@ def models_create(payload: dict = Body(...)):
 
 
 @app.get("/api/models/{model_id}/tasks")
-def model_tasks(model_id: str):
-    """Tasks assigned to a model — powers the creator app view."""
+def model_tasks(model_id: str, user: dict = Depends(current_user)):
+    """Tasks assigned to a model — powers the creator app view.
+    Creators may only read their own model's tasks; admins read any."""
+    if user["role"] != "admin" and user.get("model_id") != model_id:
+        raise HTTPException(403, "Not your tasks")
     if not db.enabled():
         return []
     return db.list_model_tasks(model_id)
 
 
 @app.post("/api/models/{model_id}/approve")
-def models_approve(model_id: str):
+def models_approve(model_id: str, user: dict = Depends(require_admin)):
     _require_db()
     return db.update_model(model_id, {"status": "Approved"})
 
 
 @app.post("/api/models/{model_id}/setup-folder")
-def models_setup_folder(model_id: str):
+def models_setup_folder(model_id: str, user: dict = Depends(require_admin)):
     _require_db()
     _require_connection()
     m = db.get_model(model_id)
@@ -252,7 +276,7 @@ def models_setup_folder(model_id: str):
 
 
 @app.patch("/api/models/{model_id}")
-def models_update(model_id: str, payload: dict = Body(...)):
+def models_update(model_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
     _require_db()
     allowed = {k: v for k, v in payload.items() if k in
                ("name", "legal_name", "username", "email", "location", "status", "progress")}
@@ -271,7 +295,7 @@ def models_update(model_id: str, payload: dict = Body(...)):
 
 
 @app.delete("/api/models/{model_id}")
-def models_delete(model_id: str):
+def models_delete(model_id: str, user: dict = Depends(require_admin)):
     _require_db()
     db.delete_model(model_id)
     return {"deleted": True}
@@ -279,14 +303,14 @@ def models_delete(model_id: str):
 
 # ───────────────────── Tasks (DB-backed) ─────────────────────
 @app.get("/api/tasks")
-def tasks_list(templates: int = 0):
+def tasks_list(templates: int = 0, user: dict = Depends(require_admin)):
     if not db.enabled():
         return []
     return db.list_tasks(templates=bool(templates))
 
 
 @app.post("/api/tasks")
-def tasks_create(payload: dict = Body(...)):
+def tasks_create(payload: dict = Body(...), user: dict = Depends(require_admin)):
     """Create a task (or template). For real tasks, auto-create the upload folder
     inside each assigned model's Drive (the registration trigger of content)."""
     _require_db()
@@ -316,15 +340,17 @@ def tasks_create(payload: dict = Body(...)):
 
 
 @app.post("/api/tasks/{task_id}/submit")
-def task_submit(task_id: str, model_id: str = Query(...)):
-    """Creator submits their uploaded content for manager review."""
+def task_submit(task_id: str, model_id: str = Query(...), user: dict = Depends(current_user)):
+    """Creator submits their uploaded content for manager review (own model only)."""
+    if user["role"] != "admin" and user.get("model_id") != model_id:
+        raise HTTPException(403, "Not your task")
     _require_db()
     db.submit_assignee(task_id, model_id)
     return {"status": "submitted"}
 
 
 @app.post("/api/tasks/{task_id}/review")
-def task_review(task_id: str, payload: dict = Body(...)):
+def task_review(task_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
     """Manager approves or requests changes (per-slot notes in `review`)."""
     _require_db()
     mid = payload.get("model_id")

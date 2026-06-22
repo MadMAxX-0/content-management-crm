@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "./Icon";
+import { useAuth } from "./auth-context";
 
 const NAV = [
   { group: "Workspace" },
@@ -19,17 +20,25 @@ const NAV = [
 
 export default function Sidebar() {
   const path = usePathname();
+  const { me, signOut, authEnabled } = useAuth();
+  const isCreator = me?.role === "creator";
+
+  // Creators only ever see their own app — give them a minimal rail.
+  const nav = isCreator
+    ? [{ group: "Creator" }, { href: "/app", icon: "phone", label: "My Tasks" }]
+    : NAV;
+
   return (
     <aside className="side">
       <div className="acct">
-        <div className="avatar">Y</div>
+        <div className="avatar">{(me?.name || "Y").charAt(0).toUpperCase()}</div>
         <div>
-          <div className="nm">Youtopia CRM</div>
-          <div className="rl">Admin</div>
+          <div className="nm">{isCreator ? me?.name : "Youtopia CRM"}</div>
+          <div className="rl">{isCreator ? "Creator" : "Admin"}</div>
         </div>
       </div>
       <nav className="nav">
-        {NAV.map((n, i) =>
+        {nav.map((n, i) =>
           "group" in n ? (
             <div className="lbl" key={i}>{n.group}</div>
           ) : (
@@ -45,8 +54,17 @@ export default function Sidebar() {
             </Link>
           )
         )}
-        <div className="divider" />
-        <Link href="#" className="soon"><Icon name="spark" /> X AI <span className="pill">AI</span></Link>
+        {!isCreator && (
+          <>
+            <div className="divider" />
+            <Link href="#" className="soon"><Icon name="spark" /> X AI <span className="pill">AI</span></Link>
+          </>
+        )}
+        {authEnabled && (
+          <button className="nav-signout" onClick={signOut}>
+            <Icon name="logout" /> Sign out
+          </button>
+        )}
       </nav>
     </aside>
   );

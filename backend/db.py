@@ -142,6 +142,16 @@ def get_model(model_id: str) -> dict | None:
         return dict(row) if row else None
 
 
+def get_model_by_email(email: str) -> dict | None:
+    """Match a creator login to their model by email (case-insensitive)."""
+    with engine().connect() as c:
+        row = c.execute(
+            text(f"select {MODEL_COLS} from models where lower(email) = lower(:e) order by created_at limit 1"),
+            {"e": email},
+        ).mappings().first()
+        return dict(row) if row else None
+
+
 def create_model(d: dict) -> dict:
     with engine().begin() as c:
         row = c.execute(
