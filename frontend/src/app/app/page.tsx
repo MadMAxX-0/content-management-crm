@@ -121,7 +121,6 @@ function TaskDetail({ task, modelId, folders, onBack, onChanged }: {
   const review = task.review || {};
   const st = task.assignee_status;
   const [busy, setBusy] = useState(false);
-  const [openSlot, setOpenSlot] = useState<Slot | null>(null);
   const locked = st === "submitted" || st === "approved";
 
   const submit = async () => {
@@ -129,20 +128,6 @@ function TaskDetail({ task, modelId, folders, onBack, onChanged }: {
     try { await api.submitTask(task.id, modelId); onChanged(); }
     finally { setBusy(false); }
   };
-
-  // Drilled into one folder — focused upload view
-  if (openSlot) {
-    return (
-      <div className="cv-wrap">
-        <button className="btn sm" onClick={() => setOpenSlot(null)}><Icon name="chevr" style={{ transform: "rotate(180deg)" }} /> Back to task</button>
-        <div className="cv-detail-head">
-          <span className="ct-ic lg"><Icon name="folder" /></span>
-          <div><h2>{openSlot.label}</h2><div className="sub">{task.title}</div></div>
-        </div>
-        <UploadSlot folderId={folders[openSlot.folderName]} parentId={task.upload_folder_id!} slot={openSlot} review={review[openSlot.folderName]} locked={locked} />
-      </div>
-    );
-  }
 
   return (
     <div className="cv-wrap">
@@ -160,7 +145,7 @@ function TaskDetail({ task, modelId, folders, onBack, onChanged }: {
       {st === "submitted" && <div className="cv-status wait"><Icon name="check" /> Submitted — awaiting manager review.</div>}
       {st === "changes_requested" && (
         <div className="cv-status redo">
-          <Icon name="info" /> Changes requested — open the flagged folders below and re-upload.
+          <Icon name="info" /> Changes requested — please review the notes below and re-upload.
           {review._overall?.note && <div className="cs-note">{review._overall.note}</div>}
         </div>
       )}
@@ -178,7 +163,7 @@ function TaskDetail({ task, modelId, folders, onBack, onChanged }: {
         <UploadSlot folderId={task.upload_folder_id} parentId={task.upload_folder_id} slot={{ label: task.title, folderName: "" }} review={review._overall} locked={locked} />
       ) : (
         slots.map((s) => (
-          <SlotCard key={s.label} slot={s} folderId={folders[s.folderName]} review={review[s.folderName]} onOpen={() => setOpenSlot(s)} />
+          <UploadSlot key={s.label} folderId={folders[s.folderName]} parentId={task.upload_folder_id!} slot={s} review={review[s.folderName]} locked={locked} />
         ))
       )}
 
@@ -192,37 +177,6 @@ function TaskDetail({ task, modelId, folders, onBack, onChanged }: {
         </button>
       )}
     </div>
-  );
-}
-
-function SlotCard({ slot, folderId, review, onOpen }: {
-  slot: Slot; folderId?: string; review?: { state?: string; note?: string }; onOpen: () => void;
-}) {
-  const [count, setCount] = useState<number | null>(null);
-  const [thumb, setThumb] = useState<string | null>(null);
-  useEffect(() => {
-    if (!folderId) { setCount(0); setThumb(null); return; }
-    api.folder(folderId).then((r) => {
-      const files = (r.items || []).filter((f) => f.mimeType !== FOLDER_MIME);
-      setCount(files.length);
-      const img = files.find((f) => f.mimeType?.startsWith("image/"));
-      setThumb(img ? apiBase + `/api/file/${img.id}/content` : null);
-    }).catch(() => setCount(0));
-  }, [folderId]);
-  const redo = review?.state === "redo";
-  const approved = review?.state === "approved";
-  return (
-    <button className={`cv-slot-card ${redo ? "redo" : ""} ${approved ? "ok" : ""}`} onClick={onOpen}>
-      <span className="sc-thumb">{thumb ? <img src={thumb} alt="" /> : <Icon name={count ? "image" : "upload"} />}</span>
-      <span className="sc-main">
-        <span className="sc-label">{slot.label}
-          {approved && <span className="badge b-green"><Icon name="check" /></span>}
-          {redo && <span className="badge b-amber">Redo</span>}
-        </span>
-        <span className="sc-sub">{count ? `${count} uploaded` : "Tap to upload"}{slot.instruction ? ` · ${slot.instruction}` : ""}</span>
-      </span>
-      <Icon name="chevr" className="sc-go" />
-    </button>
   );
 }
 
