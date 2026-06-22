@@ -241,6 +241,7 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
   const [fid, setFid] = useState<string | undefined>(folderId);
   const [files, setFiles] = useState<DriveItem[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   useEffect(() => { setFid(folderId); }, [folderId]);
 
   const load = useCallback(async (id?: string) => {
@@ -256,7 +257,7 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fl = e.target.files;
     if (!fl?.length) return;
-    setBusy(true);
+    setBusy(true); setErr(null);
     try {
       let target = fid;
       if (!target) {
@@ -266,6 +267,10 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
       if (!target) return;
       for (const f of Array.from(fl)) await api.uploadFile(target, f);
       await load(target);
+    } catch (e: any) {
+      setErr(e?.message?.includes("401") || e?.message?.includes("403")
+        ? "Upload not allowed — please sign out and back in."
+        : "Upload failed. Check your connection and try again.");
     } finally { setBusy(false); e.target.value = ""; }
   };
 
@@ -294,7 +299,9 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
       {files && files.length > 0 && (
         <div className="slot-files">
           {files.map((f) => (
-            <a className="sf" key={f.id} href={f.webViewLink || apiBase + `/api/file/${f.id}/content`} target="_blank" rel="noreferrer" title={f.name}>
+            // Always open files THROUGH the backend (agency-served) — creators
+            // have no direct Drive access, so never link to Drive's webViewLink.
+            <a className="sf" key={f.id} href={apiBase + `/api/file/${f.id}/content`} target="_blank" rel="noreferrer" title={f.name}>
               {isImg(f.mimeType)
                 ? <img src={apiBase + `/api/file/${f.id}/content`} alt={f.name} />
                 : <span className="sf-file"><Icon name={f.mimeType?.startsWith("video/") ? "video" : "clip"} /></span>}
@@ -302,6 +309,8 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
           ))}
         </div>
       )}
+
+      {err && <div className="cs-note" style={{ background: "#fff0f0", color: "#c0392b" }}>{err}</div>}
 
       {!locked && (
         <label className={`upload-tile ${busy ? "busy" : ""}`}>
