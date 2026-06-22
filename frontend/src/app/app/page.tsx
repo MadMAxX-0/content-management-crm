@@ -204,6 +204,7 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
         target = slot.folderName ? (await api.createSubfolder(parentId, slot.folderName)).id : parentId;
         setFid(target);
       }
+      if (!target) return;
       for (const f of Array.from(fl)) await api.uploadFile(target, f);
       await load(target);
     } finally { setBusy(false); e.target.value = ""; }
