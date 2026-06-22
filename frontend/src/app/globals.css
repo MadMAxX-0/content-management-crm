@@ -520,6 +520,9 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 .cs-note{flex-basis:100%;font-weight:500;background:rgba(255,255,255,.55);border-radius:10px;padding:9px 11px;margin-top:2px;line-height:1.5}
 .cv-slot.redo{border-color:#f3c98a}
 .cv-slot.ok{border-color:#bfe9ce}
+.cs-ok{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#1f8f53;
+  background:#eefaf1;border:1px solid #cfeede;border-radius:11px;padding:9px 11px;margin-top:9px}
+.cs-ok svg{width:15px;height:15px}
 .cv-submit{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:0;border-radius:16px;padding:16px;
   font-size:15px;font-weight:720;color:#fff;background:var(--pink-grad);box-shadow:var(--pink-sh);cursor:pointer;margin-top:8px}
 .cv-submit:disabled{opacity:.55;cursor:default;filter:saturate(.5)}

@@ -196,6 +196,7 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
   const [files, setFiles] = useState<DriveItem[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState(0); // files uploaded in the last action
   useEffect(() => { setFid(folderId); }, [folderId]);
 
   const load = useCallback(async (id?: string) => {
@@ -211,7 +212,7 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fl = e.target.files;
     if (!fl?.length) return;
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setJustAdded(0);
     try {
       let target = fid;
       if (!target) {
@@ -221,6 +222,7 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
       if (!target) return;
       for (const f of Array.from(fl)) await api.uploadFile(target, f);
       await load(target);
+      setJustAdded(fl.length);
     } catch (e: any) {
       setErr(e?.message?.includes("401") || e?.message?.includes("403")
         ? "Upload not allowed — please sign out and back in."
@@ -266,11 +268,15 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
 
       {err && <div className="cs-note" style={{ background: "#fff0f0", color: "#c0392b" }}>{err}</div>}
 
+      {justAdded > 0 && !busy && (
+        <div className="cs-ok"><Icon name="check" /> {justAdded} {justAdded === 1 ? "file" : "files"} uploaded to {slot.label}</div>
+      )}
+
       {!locked && (
         <label className={`upload-tile ${busy ? "busy" : ""}`}>
           <input type="file" multiple accept="image/*,video/*" onChange={onPick} disabled={busy} hidden />
-          {busy ? <><Icon name="refresh" className="spin" /> Uploading…</>
-            : <><Icon name="upload" /> {count > 0 ? "Add more" : "Upload content"}</>}
+          {busy ? <><Icon name="refresh" className="spin" /> Uploading to {slot.label}…</>
+            : <><Icon name="upload" /> {count > 0 ? `Add more to ${slot.label}` : `Upload to ${slot.label}`}</>}
         </label>
       )}
     </div>
