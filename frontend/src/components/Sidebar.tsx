@@ -18,7 +18,7 @@ const NAV = [
   { href: "/app", icon: "phone", label: "Creator App" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open }: { open?: boolean }) {
   const path = usePathname();
   const { me, signOut, authEnabled } = useAuth();
   const isCreator = me?.role === "creator";
@@ -29,7 +29,7 @@ export default function Sidebar() {
     : NAV;
 
   return (
-    <aside className="side">
+    <aside className={`side ${open ? "open" : ""}`}>
       <div className="acct">
         <div className="avatar">{(me?.name || "Y").charAt(0).toUpperCase()}</div>
         <div>

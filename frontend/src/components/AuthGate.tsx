@@ -8,10 +8,20 @@ import Icon from "./Icon";
 import Sidebar from "./Sidebar";
 
 function Shell({ children }: { children: React.ReactNode }) {
+  const [navOpen, setNavOpen] = useState(false);
+  const p = usePathname();
+  useEffect(() => { setNavOpen(false); }, [p]); // close drawer on navigation
   return (
     <div className="app">
-      <Sidebar />
-      <main className="main">{children}</main>
+      <Sidebar open={navOpen} />
+      <div className={`side-backdrop ${navOpen ? "show" : ""}`} onClick={() => setNavOpen(false)} />
+      <main className="main">
+        <div className="topbar-m">
+          <button className="hamb" aria-label="Menu" onClick={() => setNavOpen(true)}><Icon name="menu" /></button>
+          <span className="tb-title">Youtopia CRM</span>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
