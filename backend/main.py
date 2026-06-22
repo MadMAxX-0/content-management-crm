@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 import auth
 import db
 import drive
+import supa_admin
 
 app = FastAPI(title="Content Management CRM — Drive Backend")
 
@@ -372,6 +373,108 @@ def task_review(task_id: str, payload: dict = Body(...), user: dict = Depends(re
 def tasks_delete(task_id: str, user: dict = Depends(require_tasks)):
     _require_db()
     db.delete_task(task_id)
+    return {"deleted": True}
+
+
+# ───────────────────── Statistics ─────────────────────
+@app.get("/api/stats")
+def stats(user: dict = Depends(require_admin)):
+    if not db.enabled():
+        raise HTTPException(400, "Database not configured")
+    return db.stats()
+
+
+# ───────────────────── Manage Users ─────────────────────
+def _role_of(email: str, roles: dict, model_emails: set) -> str:
+    email = (email or "").lower()
+    if email in auth.ADMIN_EMAILS or roles.get(email) == "admin":
+        return "admin"
+    if email in auth.VA_EMAILS or roles.get(email) == "va":
+        return "va"
+    if email in model_emails:
+        return "creator"
+    return "none"
+
+
+@app.get("/api/users")
+def users_list(user: dict = Depends(require_admin)):
+    if not supa_admin.enabled():
+        raise HTTPException(400, "User management needs SUPABASE_URL + SUPABASE_SERVICE_KEY on the backend.")
+    roles = db.get_roles() if db.enabled() else {}
+    models = {(m.get("email") or "").lower(): m for m in (db.list_models() if db.enabled() else []) if m.get("email")}
+    out = []
+    try:
+        users = supa_admin.list_users()
+    except Exception as e:
+        raise HTTPException(502, f"Could not reach Supabase: {e}")
+    for u in users:
+        email = (u.get("email") or "").lower()
+        role = _role_of(email, roles, set(models))
+        out.append({
+            "id": u.get("id"),
+            "email": u.get("email"),
+            "role": role,
+            # env-granted roles can't be changed from the UI (they live in Railway)
+            "locked": email in auth.ADMIN_EMAILS or email in auth.VA_EMAILS,
+            "is_self": email == (user.get("email") or "").lower(),
+            "model": models.get(email, {}).get("name"),
+            "created_at": u.get("created_at"),
+            "last_sign_in_at": u.get("last_sign_in_at"),
+        })
+    order = {"admin": 0, "va": 1, "creator": 2, "none": 3}
+    out.sort(key=lambda x: (order.get(x["role"], 9), (x["email"] or "")))
+    return out
+
+
+@app.post("/api/users")
+def users_create(payload: dict = Body(...), user: dict = Depends(require_admin)):
+    if not supa_admin.enabled():
+        raise HTTPException(400, "User management needs SUPABASE_URL + SUPABASE_SERVICE_KEY on the backend.")
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    role = payload.get("role") or "va"
+    if not email or not password:
+        raise HTTPException(400, "Email and password are required.")
+    if len(password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters.")
+    try:
+        created = supa_admin.create_user(email, password)
+    except Exception as e:
+        raise HTTPException(400, f"Could not create the account (it may already exist): {e}")
+    if db.enabled():
+        db.set_role(email, role)
+    return {"id": created.get("id"), "email": email, "role": role}
+
+
+@app.patch("/api/users/role")
+def users_set_role(payload: dict = Body(...), user: dict = Depends(require_admin)):
+    email = (payload.get("email") or "").strip().lower()
+    role = payload.get("role")
+    if not email:
+        raise HTTPException(400, "Email is required.")
+    if email in auth.ADMIN_EMAILS or email in auth.VA_EMAILS:
+        raise HTTPException(400, "This account's role is set on the server (Railway) and can't be changed here.")
+    if not db.enabled():
+        raise HTTPException(400, "Database not configured")
+    db.set_role(email, role)
+    return {"email": email, "role": role}
+
+
+@app.delete("/api/users/{user_id}")
+def users_delete(user_id: str, email: str = Query(default=""), user: dict = Depends(require_admin)):
+    if not supa_admin.enabled():
+        raise HTTPException(400, "User management needs SUPABASE_URL + SUPABASE_SERVICE_KEY on the backend.")
+    em = (email or "").lower()
+    if em and em == (user.get("email") or "").lower():
+        raise HTTPException(400, "You can't delete your own account.")
+    if em and (em in auth.ADMIN_EMAILS or em in auth.VA_EMAILS):
+        raise HTTPException(400, "This account is protected by the server config (Railway).")
+    try:
+        supa_admin.delete_user(user_id)
+    except Exception as e:
+        raise HTTPException(400, f"Could not delete the account: {e}")
+    if em and db.enabled():
+        db.set_role(em, None)
     return {"deleted": True}
 
 

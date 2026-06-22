@@ -123,6 +123,43 @@ export const api = {
     fd.append("file", file);
     return req(`/api/folder/${folderId}/upload`, { method: "POST", body: fd });
   },
+
+  // statistics
+  stats: (): Promise<Stats> => req("/api/stats"),
+
+  // user management (admin)
+  listUsers: (): Promise<UserRow[]> => req("/api/users"),
+  createUser: (data: { email: string; password: string; role: string }): Promise<UserRow> =>
+    req("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+  setUserRole: (email: string, role: string) =>
+    req("/api/users/role", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, role }) }),
+  deleteUser: (id: string, email: string) =>
+    req(`/api/users/${id}?email=${encodeURIComponent(email)}`, { method: "DELETE" }),
+};
+
+export type Stats = {
+  models_total: number;
+  models_by_status: Record<string, number>;
+  tasks_total: number;
+  templates_total: number;
+  tasks_by_type: Record<string, number>;
+  assignees_total: number;
+  work_by_status: Record<string, number>;
+  completion_pct: number;
+  pending_review: number;
+  per_model: { id: string; name: string; total: number; submitted: number; approved: number; changes: number }[];
+  recent: { title: string; model: string; status: string; submitted_at?: string | null; reviewed_at?: string | null }[];
+};
+
+export type UserRow = {
+  id: string;
+  email: string | null;
+  role: "admin" | "va" | "creator" | "none";
+  locked: boolean;
+  is_self: boolean;
+  model?: string | null;
+  created_at?: string | null;
+  last_sign_in_at?: string | null;
 };
 
 export type TaskRow = {

@@ -284,6 +284,89 @@ def delete_task(task_id: str) -> None:
         c.execute(text("delete from tasks where id = :id"), {"id": task_id})
 
 
+# ───────────────────── Roles (DB-backed grants) ─────────────────────
+# Stored in app_settings under key 'roles' as {email: 'admin'|'va'}. Lets the
+# Manage Users page grant roles without editing Railway env vars. Env allowlists
+# (ADMIN_EMAILS / VA_EMAILS) still win as a bootstrap so the owner is never locked out.
+def get_roles() -> dict:
+    return get_setting("roles") or {}
+
+
+def set_role(email: str, role: str | None) -> dict:
+    roles = get_roles()
+    email = (email or "").lower()
+    if role in ("admin", "va"):
+        roles[email] = role
+    else:  # creator / none / revoke → drop any explicit grant
+        roles.pop(email, None)
+    set_setting("roles", roles)
+    return roles
+
+
+# ───────────────────── Statistics ─────────────────────
+def stats() -> dict:
+    with engine().connect() as c:
+        def scalar(q, **p):
+            return c.execute(text(q), p).scalar() or 0
+
+        def pairs(q):
+            return {(r[0] or "?"): r[1] for r in c.execute(text(q)).all()}
+
+        models_total = scalar("select count(*) from models")
+        models_by_status = pairs("select coalesce(status,'Pending'), count(*) from models group by 1")
+        tasks_total = scalar("select count(*) from tasks where is_template = false")
+        templates_total = scalar("select count(*) from tasks where is_template = true")
+        tasks_by_type = pairs(
+            "select coalesce(type,'other'), count(*) from tasks where is_template = false group by 1"
+        )
+        assignees_total = scalar("select count(*) from task_assignees")
+        work_by_status = pairs("select coalesce(status,'todo'), count(*) from task_assignees group by 1")
+
+        per_model = [
+            dict(r) for r in c.execute(
+                text(
+                    "select m.id::text as id, m.name, "
+                    "count(ta.*) as total, "
+                    "count(*) filter (where ta.status = 'submitted') as submitted, "
+                    "count(*) filter (where ta.status = 'approved') as approved, "
+                    "count(*) filter (where ta.status = 'changes_requested') as changes "
+                    "from models m left join task_assignees ta on ta.model_id = m.id "
+                    "group by m.id, m.name order by total desc, m.name"
+                )
+            ).mappings().all()
+        ]
+
+        recent = [
+            dict(r) for r in c.execute(
+                text(
+                    "select t.title, m.name as model, ta.status, ta.submitted_at, ta.reviewed_at "
+                    "from task_assignees ta "
+                    "join tasks t on t.id = ta.task_id "
+                    "join models m on m.id = ta.model_id "
+                    "where ta.submitted_at is not null or ta.reviewed_at is not null "
+                    "order by greatest(coalesce(ta.reviewed_at, to_timestamp(0)), "
+                    "coalesce(ta.submitted_at, to_timestamp(0))) desc limit 12"
+                )
+            ).mappings().all()
+        ]
+
+    approved = work_by_status.get("approved", 0)
+    completion = round(approved / assignees_total * 100) if assignees_total else 0
+    return {
+        "models_total": models_total,
+        "models_by_status": models_by_status,
+        "tasks_total": tasks_total,
+        "templates_total": templates_total,
+        "tasks_by_type": tasks_by_type,
+        "assignees_total": assignees_total,
+        "work_by_status": work_by_status,
+        "completion_pct": completion,
+        "pending_review": work_by_status.get("submitted", 0),
+        "per_model": per_model,
+        "recent": recent,
+    }
+
+
 def _json(v):
     import json as _j
     return _j.dumps(v)

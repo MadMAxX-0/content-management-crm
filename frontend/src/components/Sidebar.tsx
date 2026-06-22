@@ -7,13 +7,13 @@ import { useAuth } from "./auth-context";
 const NAV = [
   { group: "Workspace" },
   { href: "/", icon: "grid", label: "Overview" },
-  { href: "/users", icon: "users", label: "Manage Users", soon: true },
+  { href: "/users", icon: "users", label: "Manage Users" },
   { href: "/models", icon: "star", label: "Manage Models" },
   { group: "Content" },
   { href: "/tasks", icon: "clip", label: "Model Tasks" },
   { href: "/drive", icon: "folder", label: "Drive Manager" },
   { href: "/templates", icon: "folders", label: "Drive Templates", soon: true },
-  { href: "/stats", icon: "pie", label: "Statistics", soon: true },
+  { href: "/stats", icon: "pie", label: "Statistics" },
   { group: "Creator" },
   { href: "/app", icon: "phone", label: "Creator App" },
 ];

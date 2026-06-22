@@ -40,12 +40,24 @@ def verify_token(token: str) -> str | None:
         return None
 
 
+def _db_roles() -> dict:
+    """Role grants from the DB (managed via the Manage Users page). Safe if DB off."""
+    try:
+        if db.enabled():
+            return db.get_roles()
+    except Exception:
+        pass
+    return {}
+
+
 def resolve(email: str | None) -> dict:
-    """Map an email to a role. admin > va > creator (model.email) > none."""
+    """Map an email to a role. admin > va > creator (model.email) > none.
+    A role is granted by the env allowlist OR a DB grant (whichever matches)."""
     email = (email or "").lower()
-    if email and email in ADMIN_EMAILS:
+    db_role = _db_roles().get(email)
+    if email and (email in ADMIN_EMAILS or db_role == "admin"):
         return {"email": email, "role": "admin", "model_id": None, "name": "Admin"}
-    if email and email in VA_EMAILS:
+    if email and (email in VA_EMAILS or db_role == "va"):
         return {"email": email, "role": "va", "model_id": None, "name": "VA"}
     if email:
         m = db.get_model_by_email(email)
