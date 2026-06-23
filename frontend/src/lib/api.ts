@@ -143,11 +143,20 @@ export type Stats = {
   tasks_total: number;
   templates_total: number;
   tasks_by_type: Record<string, number>;
+  tasks_by_priority: Record<string, number>;
   assignees_total: number;
   work_by_status: Record<string, number>;
   completion_pct: number;
   pending_review: number;
-  per_model: { id: string; name: string; total: number; submitted: number; approved: number; changes: number }[];
+  overdue: number;
+  avg_response_hours: number | null;
+  models_by_month: Record<string, number>;
+  tasks_created_by_month: Record<string, number>;
+  tasks_completed_by_month: Record<string, number>;
+  per_model: {
+    id: string; name: string; status: string; created_at?: string | null;
+    total: number; submitted: number; approved: number; changes: number;
+  }[];
   recent: { title: string; model: string; status: string; submitted_at?: string | null; reviewed_at?: string | null }[];
 };
 

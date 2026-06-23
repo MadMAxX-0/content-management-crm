@@ -325,16 +325,52 @@ def stats() -> dict:
         per_model = [
             dict(r) for r in c.execute(
                 text(
-                    "select m.id::text as id, m.name, "
+                    "select m.id::text as id, m.name, m.status, m.created_at, "
                     "count(ta.*) as total, "
                     "count(*) filter (where ta.status = 'submitted') as submitted, "
                     "count(*) filter (where ta.status = 'approved') as approved, "
                     "count(*) filter (where ta.status = 'changes_requested') as changes "
                     "from models m left join task_assignees ta on ta.model_id = m.id "
-                    "group by m.id, m.name order by total desc, m.name"
+                    "group by m.id, m.name, m.status, m.created_at order by total desc, m.name"
                 )
             ).mappings().all()
         ]
+
+        # Monthly time series (keyed YYYY-MM; the frontend builds the last-N-months axis)
+        models_by_month = {
+            r[0]: r[1] for r in c.execute(
+                text("select to_char(date_trunc('month', created_at),'YYYY-MM'), count(*) "
+                     "from models group by 1")
+            ).all()
+        }
+        tasks_created_by_month = {
+            r[0]: r[1] for r in c.execute(
+                text("select to_char(date_trunc('month', created_at),'YYYY-MM'), count(*) "
+                     "from tasks where is_template = false group by 1")
+            ).all()
+        }
+        tasks_completed_by_month = {
+            r[0]: r[1] for r in c.execute(
+                text("select to_char(date_trunc('month', ta.reviewed_at),'YYYY-MM'), count(*) "
+                     "from task_assignees ta where ta.status = 'approved' and ta.reviewed_at is not null "
+                     "group by 1")
+            ).all()
+        }
+        tasks_by_priority = pairs(
+            "select coalesce(priority,'medium'), count(*) from tasks where is_template = false group by 1"
+        )
+        # Avg response time = hours from task creation to the model's submission
+        avg_response_hours = c.execute(
+            text("select avg(extract(epoch from (ta.submitted_at - t.created_at))/3600.0) "
+                 "from task_assignees ta join tasks t on t.id = ta.task_id "
+                 "where ta.submitted_at is not null")
+        ).scalar()
+        # Overdue = assigned, past due date, not yet approved
+        overdue = c.execute(
+            text("select count(*) from task_assignees ta join tasks t on t.id = ta.task_id "
+                 "where t.due_date is not null and t.due_date < current_date "
+                 "and ta.status <> 'approved'")
+        ).scalar() or 0
 
         recent = [
             dict(r) for r in c.execute(
@@ -358,10 +394,16 @@ def stats() -> dict:
         "tasks_total": tasks_total,
         "templates_total": templates_total,
         "tasks_by_type": tasks_by_type,
+        "tasks_by_priority": tasks_by_priority,
         "assignees_total": assignees_total,
         "work_by_status": work_by_status,
         "completion_pct": completion,
         "pending_review": work_by_status.get("submitted", 0),
+        "overdue": overdue,
+        "avg_response_hours": round(float(avg_response_hours), 1) if avg_response_hours is not None else None,
+        "models_by_month": models_by_month,
+        "tasks_created_by_month": tasks_created_by_month,
+        "tasks_completed_by_month": tasks_completed_by_month,
         "per_model": per_model,
         "recent": recent,
     }
