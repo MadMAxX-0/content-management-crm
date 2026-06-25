@@ -552,5 +552,60 @@ def kanban_card_move(card_id: str, payload: dict = Body(...), user: dict = Depen
     return {"moved": True}
 
 
+# ───────────────────── Todo (Office app) ─────────────────────
+@app.get("/api/todo/lists")
+def todo_lists(user: dict = Depends(require_admin)):
+    _require_db()
+    return db.list_todo_lists()
+
+
+@app.post("/api/todo/lists")
+def todo_list_create(payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    title = (payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(400, "List title is required.")
+    return db.create_todo_list(title, payload.get("description"), payload.get("color"))
+
+
+@app.get("/api/todo/lists/{list_id}")
+def todo_list_get(list_id: str, user: dict = Depends(require_admin)):
+    _require_db()
+    tl = db.get_todo_list(list_id)
+    if not tl:
+        raise HTTPException(404, "List not found")
+    return tl
+
+
+@app.delete("/api/todo/lists/{list_id}")
+def todo_list_delete(list_id: str, user: dict = Depends(require_admin)):
+    _require_db()
+    db.delete_todo_list(list_id)
+    return {"deleted": True}
+
+
+@app.post("/api/todo/lists/{list_id}/tasks")
+def todo_task_create(list_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    title = (payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(400, "Task title is required.")
+    return db.create_todo_task(list_id, title)
+
+
+@app.patch("/api/todo/tasks/{task_id}")
+def todo_task_update(task_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    db.update_todo_task(task_id, payload)
+    return {"updated": True}
+
+
+@app.delete("/api/todo/tasks/{task_id}")
+def todo_task_delete(task_id: str, user: dict = Depends(require_admin)):
+    _require_db()
+    db.delete_todo_task(task_id)
+    return {"deleted": True}
+
+
 # serve any other static assets
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

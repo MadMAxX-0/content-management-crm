@@ -142,6 +142,18 @@ export const api = {
   kanbanMoveCard: (id: string, listId: string, position: number) =>
     req(`/api/kanban/cards/${id}/move`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ list_id: listId, position }) }),
 
+  // todo (Office app)
+  todoLists: (): Promise<TodoList[]> => req("/api/todo/lists"),
+  todoCreateList: (title: string, description?: string, color?: string): Promise<TodoList> =>
+    req("/api/todo/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, description, color }) }),
+  todoDeleteList: (id: string) => req(`/api/todo/lists/${id}`, { method: "DELETE" }),
+  todoList: (id: string): Promise<TodoListFull> => req(`/api/todo/lists/${id}`),
+  todoCreateTask: (listId: string, title: string): Promise<TodoTask> =>
+    req(`/api/todo/lists/${listId}/tasks`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) }),
+  todoUpdateTask: (id: string, fields: { title?: string; status?: TodoStatus; priority?: TodoPriority; due_date?: string | null; description?: string | null }) =>
+    req(`/api/todo/tasks/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields) }),
+  todoDeleteTask: (id: string) => req(`/api/todo/tasks/${id}`, { method: "DELETE" }),
+
   // user management (admin)
   listUsers: (): Promise<UserRow[]> => req("/api/users"),
   createUser: (data: { email: string; password: string; role: string }): Promise<UserRow> =>
@@ -179,6 +191,15 @@ export type KanbanCard = { id: string; list_id: string; title: string; descripti
 export type KanbanList = { id: string; title: string; position: number; cards: KanbanCard[] };
 export type KanbanBoard = { id: string; title: string; description?: string | null; created_at?: string; card_count?: number };
 export type KanbanBoardFull = KanbanBoard & { lists: KanbanList[] };
+
+export type TodoStatus = "todo" | "in_progress" | "done";
+export type TodoPriority = "none" | "low" | "medium" | "high" | "urgent";
+export type TodoTask = {
+  id: string; title: string; position: number;
+  status: TodoStatus; priority: TodoPriority; due_date?: string | null; description?: string | null;
+};
+export type TodoList = { id: string; title: string; description?: string | null; color: string; created_at?: string; total?: number; done?: number };
+export type TodoListFull = TodoList & { tasks: TodoTask[] };
 
 export type UserRow = {
   id: string;

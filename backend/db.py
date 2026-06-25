@@ -110,6 +110,31 @@ create table if not exists kanban_cards (
   position int default 0,
   created_at timestamptz default now()
 );
+create table if not exists todo_lists (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  color text default '#2f6df6',
+  created_at timestamptz default now()
+);
+create table if not exists todo_tasks (
+  id uuid primary key default gen_random_uuid(),
+  list_id uuid references todo_lists(id) on delete cascade,
+  title text not null,
+  done boolean default false,
+  status text default 'todo',
+  priority text default 'none',
+  due_date date,
+  description text,
+  position int default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table todo_tasks add column if not exists status text default 'todo';
+alter table todo_tasks add column if not exists priority text default 'none';
+alter table todo_tasks add column if not exists due_date date;
+alter table todo_tasks add column if not exists description text;
+alter table todo_tasks add column if not exists updated_at timestamptz default now();
 """
 
 
@@ -519,6 +544,78 @@ def move_card(card_id: str, list_id: str, position: int) -> None:
     with engine().begin() as c:
         c.execute(text("update kanban_cards set list_id = :l, position = :p where id = :id"),
                   {"l": list_id, "p": position, "id": card_id})
+
+
+# ───────────────────── Todo (Office app) ─────────────────────
+def list_todo_lists() -> list[dict]:
+    with engine().connect() as c:
+        rows = c.execute(text(
+            "select tl.id::text, tl.title, tl.description, tl.color, tl.created_at, "
+            "count(tt.*) as total, count(*) filter (where tt.status = 'done') as done "
+            "from todo_lists tl left join todo_tasks tt on tt.list_id = tl.id "
+            "group by tl.id order by tl.created_at desc"
+        )).mappings().all()
+        return [dict(r) for r in rows]
+
+
+def create_todo_list(title: str, description: str | None, color: str | None) -> dict:
+    with engine().begin() as c:
+        row = c.execute(text(
+            "insert into todo_lists (title, description, color) values (:t, :d, coalesce(:c,'#2f6df6')) "
+            "returning id::text, title, description, color, created_at"
+        ), {"t": title, "d": description, "c": color}).mappings().one()
+        r = dict(row); r["total"] = 0; r["done"] = 0
+        return r
+
+
+def delete_todo_list(list_id: str) -> None:
+    with engine().begin() as c:
+        c.execute(text("delete from todo_lists where id = :id"), {"id": list_id})
+
+
+def get_todo_list(list_id: str) -> dict | None:
+    with engine().connect() as c:
+        tl = c.execute(text(
+            "select id::text, title, description, color, created_at from todo_lists where id = :id"
+        ), {"id": list_id}).mappings().first()
+        if not tl:
+            return None
+        tasks = [dict(r) for r in c.execute(text(
+            "select id::text, title, status, priority, due_date::text as due_date, description, position "
+            "from todo_tasks where list_id = :l order by position, created_at"
+        ), {"l": list_id}).mappings().all()]
+        r = dict(tl); r["tasks"] = tasks
+        return r
+
+
+def create_todo_task(list_id: str, title: str) -> dict:
+    with engine().begin() as c:
+        pos = c.execute(text("select coalesce(max(position),-1)+1 from todo_tasks where list_id = :l"),
+                        {"l": list_id}).scalar()
+        row = c.execute(text(
+            "insert into todo_tasks (list_id, title, position) values (:l, :t, :p) "
+            "returning id::text, title, status, priority, due_date::text as due_date, description, position"
+        ), {"l": list_id, "t": title, "p": pos}).mappings().one()
+        return dict(row)
+
+
+def update_todo_task(task_id: str, fields: dict) -> None:
+    sets, params = [], {"id": task_id}
+    for col in ("title", "status", "priority", "description"):
+        if col in fields:
+            sets.append(f"{col} = :{col}"); params[col] = fields[col]
+    if "due_date" in fields:
+        sets.append("due_date = :due_date"); params["due_date"] = fields["due_date"] or None
+    if not sets:
+        return
+    sets.append("updated_at = now()")
+    with engine().begin() as c:
+        c.execute(text(f"update todo_tasks set {', '.join(sets)} where id = :id"), params)
+
+
+def delete_todo_task(task_id: str) -> None:
+    with engine().begin() as c:
+        c.execute(text("delete from todo_tasks where id = :id"), {"id": task_id})
 
 
 def _json(v):

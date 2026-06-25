@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Icon from "./Icon";
 import KanbanApp from "./KanbanApp";
+import TodoApp from "./TodoApp";
 
 type App = { key: string; name: string; desc: string; icon: string; cat: string; href?: string; inline?: boolean };
 
@@ -14,7 +15,7 @@ const APPS: App[] = [
   { key: "kanboard", name: "Kanboard", desc: "Trello-style project management boards", icon: "kanban", cat: "Productivity", inline: true },
   { key: "calendar", name: "Calendar", desc: "Schedule events and manage your calendars", icon: "cal", cat: "Productivity" },
   { key: "note", name: "Note", desc: "Take notes and manage your notes", icon: "note", cat: "Productivity" },
-  { key: "todo", name: "Todo", desc: "Manage tasks and to-do lists with collaboration", icon: "listcheck", cat: "Productivity" },
+  { key: "todo", name: "Todo", desc: "Manage tasks and to-do lists with collaboration", icon: "listcheck", cat: "Productivity", inline: true },
 ];
 
 export default function OfficePanel({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -51,6 +52,7 @@ export default function OfficePanel({ open, onClose }: { open: boolean; onClose:
             </div>
             <div className="office-app">
               {active.key === "kanboard" && <KanbanApp />}
+              {active.key === "todo" && <TodoApp />}
             </div>
           </>
         ) : (
