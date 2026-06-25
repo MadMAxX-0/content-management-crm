@@ -89,6 +89,27 @@ alter table task_assignees add column if not exists status text default 'todo';
 alter table task_assignees add column if not exists submitted_at timestamptz;
 alter table task_assignees add column if not exists reviewed_at timestamptz;
 alter table task_assignees add column if not exists review jsonb default '{}'::jsonb;
+create table if not exists kanban_boards (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  created_at timestamptz default now()
+);
+create table if not exists kanban_lists (
+  id uuid primary key default gen_random_uuid(),
+  board_id uuid references kanban_boards(id) on delete cascade,
+  title text not null,
+  position int default 0,
+  created_at timestamptz default now()
+);
+create table if not exists kanban_cards (
+  id uuid primary key default gen_random_uuid(),
+  list_id uuid references kanban_lists(id) on delete cascade,
+  title text not null,
+  description text,
+  position int default 0,
+  created_at timestamptz default now()
+);
 """
 
 
@@ -407,6 +428,97 @@ def stats() -> dict:
         "per_model": per_model,
         "recent": recent,
     }
+
+
+# ───────────────────── Kanban (Office app) ─────────────────────
+def list_boards() -> list[dict]:
+    with engine().connect() as c:
+        rows = c.execute(text(
+            "select b.id::text, b.title, b.description, b.created_at, "
+            "(select count(*) from kanban_lists l join kanban_cards cd on cd.list_id = l.id "
+            " where l.board_id = b.id) as card_count "
+            "from kanban_boards b order by b.created_at desc"
+        )).mappings().all()
+        return [dict(r) for r in rows]
+
+
+def create_board(title: str, description: str | None) -> dict:
+    with engine().begin() as c:
+        row = c.execute(text(
+            "insert into kanban_boards (title, description) values (:t, :d) "
+            "returning id::text, title, description, created_at"
+        ), {"t": title, "d": description}).mappings().one()
+        return dict(row)
+
+
+def delete_board(board_id: str) -> None:
+    with engine().begin() as c:
+        c.execute(text("delete from kanban_boards where id = :id"), {"id": board_id})
+
+
+def get_board(board_id: str) -> dict | None:
+    with engine().connect() as c:
+        board = c.execute(text(
+            "select id::text, title, description, created_at from kanban_boards where id = :id"
+        ), {"id": board_id}).mappings().first()
+        if not board:
+            return None
+        lists = [dict(r) for r in c.execute(text(
+            "select id::text, title, position from kanban_lists where board_id = :b "
+            "order by position, created_at"
+        ), {"b": board_id}).mappings().all()]
+        cards = [dict(r) for r in c.execute(text(
+            "select cd.id::text, cd.list_id::text, cd.title, cd.description, cd.position "
+            "from kanban_cards cd join kanban_lists l on l.id = cd.list_id "
+            "where l.board_id = :b order by cd.position, cd.created_at"
+        ), {"b": board_id}).mappings().all()]
+        by_list: dict = {}
+        for cd in cards:
+            by_list.setdefault(cd["list_id"], []).append(cd)
+        for l in lists:
+            l["cards"] = by_list.get(l["id"], [])
+        result = dict(board)
+        result["lists"] = lists
+        return result
+
+
+def create_list(board_id: str, title: str) -> dict:
+    with engine().begin() as c:
+        pos = c.execute(text("select coalesce(max(position),-1)+1 from kanban_lists where board_id = :b"),
+                        {"b": board_id}).scalar()
+        row = c.execute(text(
+            "insert into kanban_lists (board_id, title, position) values (:b, :t, :p) "
+            "returning id::text, title, position"
+        ), {"b": board_id, "t": title, "p": pos}).mappings().one()
+        d = dict(row); d["cards"] = []
+        return d
+
+
+def delete_list(list_id: str) -> None:
+    with engine().begin() as c:
+        c.execute(text("delete from kanban_lists where id = :id"), {"id": list_id})
+
+
+def create_card(list_id: str, title: str, description: str | None) -> dict:
+    with engine().begin() as c:
+        pos = c.execute(text("select coalesce(max(position),-1)+1 from kanban_cards where list_id = :l"),
+                        {"l": list_id}).scalar()
+        row = c.execute(text(
+            "insert into kanban_cards (list_id, title, description, position) values (:l, :t, :d, :p) "
+            "returning id::text, list_id::text, title, description, position"
+        ), {"l": list_id, "t": title, "d": description, "p": pos}).mappings().one()
+        return dict(row)
+
+
+def delete_card(card_id: str) -> None:
+    with engine().begin() as c:
+        c.execute(text("delete from kanban_cards where id = :id"), {"id": card_id})
+
+
+def move_card(card_id: str, list_id: str, position: int) -> None:
+    with engine().begin() as c:
+        c.execute(text("update kanban_cards set list_id = :l, position = :p where id = :id"),
+                  {"l": list_id, "p": position, "id": card_id})
 
 
 def _json(v):

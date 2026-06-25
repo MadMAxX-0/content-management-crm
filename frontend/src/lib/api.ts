@@ -127,6 +127,21 @@ export const api = {
   // statistics
   stats: (): Promise<Stats> => req("/api/stats"),
 
+  // kanban (Office app)
+  kanbanBoards: (): Promise<KanbanBoard[]> => req("/api/kanban/boards"),
+  kanbanCreateBoard: (title: string, description?: string): Promise<KanbanBoard> =>
+    req("/api/kanban/boards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, description }) }),
+  kanbanDeleteBoard: (id: string) => req(`/api/kanban/boards/${id}`, { method: "DELETE" }),
+  kanbanBoard: (id: string): Promise<KanbanBoardFull> => req(`/api/kanban/boards/${id}`),
+  kanbanCreateList: (boardId: string, title: string): Promise<KanbanList> =>
+    req(`/api/kanban/boards/${boardId}/lists`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) }),
+  kanbanDeleteList: (id: string) => req(`/api/kanban/lists/${id}`, { method: "DELETE" }),
+  kanbanCreateCard: (listId: string, title: string, description?: string): Promise<KanbanCard> =>
+    req(`/api/kanban/lists/${listId}/cards`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, description }) }),
+  kanbanDeleteCard: (id: string) => req(`/api/kanban/cards/${id}`, { method: "DELETE" }),
+  kanbanMoveCard: (id: string, listId: string, position: number) =>
+    req(`/api/kanban/cards/${id}/move`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ list_id: listId, position }) }),
+
   // user management (admin)
   listUsers: (): Promise<UserRow[]> => req("/api/users"),
   createUser: (data: { email: string; password: string; role: string }): Promise<UserRow> =>
@@ -159,6 +174,11 @@ export type Stats = {
   }[];
   recent: { title: string; model: string; status: string; submitted_at?: string | null; reviewed_at?: string | null }[];
 };
+
+export type KanbanCard = { id: string; list_id: string; title: string; description?: string | null; position: number };
+export type KanbanList = { id: string; title: string; position: number; cards: KanbanCard[] };
+export type KanbanBoard = { id: string; title: string; description?: string | null; created_at?: string; card_count?: number };
+export type KanbanBoardFull = KanbanBoard & { lists: KanbanList[] };
 
 export type UserRow = {
   id: string;

@@ -478,5 +478,79 @@ def users_delete(user_id: str, email: str = Query(default=""), user: dict = Depe
     return {"deleted": True}
 
 
+# ───────────────────── Kanban (Office app) ─────────────────────
+@app.get("/api/kanban/boards")
+def kanban_boards(user: dict = Depends(require_admin)):
+    _require_db()
+    return db.list_boards()
+
+
+@app.post("/api/kanban/boards")
+def kanban_board_create(payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    title = (payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(400, "Board title is required.")
+    return db.create_board(title, payload.get("description"))
+
+
+@app.get("/api/kanban/boards/{board_id}")
+def kanban_board_get(board_id: str, user: dict = Depends(require_admin)):
+    _require_db()
+    board = db.get_board(board_id)
+    if not board:
+        raise HTTPException(404, "Board not found")
+    return board
+
+
+@app.delete("/api/kanban/boards/{board_id}")
+def kanban_board_delete(board_id: str, user: dict = Depends(require_admin)):
+    _require_db()
+    db.delete_board(board_id)
+    return {"deleted": True}
+
+
+@app.post("/api/kanban/boards/{board_id}/lists")
+def kanban_list_create(board_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    title = (payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(400, "List title is required.")
+    return db.create_list(board_id, title)
+
+
+@app.delete("/api/kanban/lists/{list_id}")
+def kanban_list_delete(list_id: str, user: dict = Depends(require_admin)):
+    _require_db()
+    db.delete_list(list_id)
+    return {"deleted": True}
+
+
+@app.post("/api/kanban/lists/{list_id}/cards")
+def kanban_card_create(list_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    title = (payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(400, "Card title is required.")
+    return db.create_card(list_id, title, payload.get("description"))
+
+
+@app.delete("/api/kanban/cards/{card_id}")
+def kanban_card_delete(card_id: str, user: dict = Depends(require_admin)):
+    _require_db()
+    db.delete_card(card_id)
+    return {"deleted": True}
+
+
+@app.post("/api/kanban/cards/{card_id}/move")
+def kanban_card_move(card_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    list_id = payload.get("list_id")
+    if not list_id:
+        raise HTTPException(400, "list_id is required.")
+    db.move_card(card_id, list_id, int(payload.get("position") or 0))
+    return {"moved": True}
+
+
 # serve any other static assets
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
