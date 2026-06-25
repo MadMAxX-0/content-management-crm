@@ -1,8 +1,10 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icon from "./Icon";
 import { useAuth } from "./auth-context";
+import OfficePanel from "./OfficePanel";
 
 const NAV = [
   { group: "Workspace" },
@@ -21,6 +23,7 @@ const NAV = [
 export default function Sidebar({ open }: { open?: boolean }) {
   const path = usePathname();
   const { me, signOut, authEnabled } = useAuth();
+  const [officeOpen, setOfficeOpen] = useState(false);
   const isCreator = me?.role === "creator";
   const isVa = me?.role === "va";
 
@@ -60,6 +63,9 @@ export default function Sidebar({ open }: { open?: boolean }) {
         {!isCreator && !isVa && (
           <>
             <div className="divider" />
+            <button className="nav-office" onClick={() => setOfficeOpen(true)}>
+              <Icon name="layers" /> Office
+            </button>
             <Link href="#" className="soon"><Icon name="spark" /> X AI <span className="pill">AI</span></Link>
           </>
         )}
@@ -69,6 +75,7 @@ export default function Sidebar({ open }: { open?: boolean }) {
           </button>
         )}
       </nav>
+      {!isCreator && !isVa && <OfficePanel open={officeOpen} onClose={() => setOfficeOpen(false)} />}
     </aside>
   );
 }
