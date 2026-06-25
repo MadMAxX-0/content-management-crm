@@ -1,9 +1,14 @@
-"""Task-content translation via the Anthropic (Claude) API.
+"""Task-content translation via the DeepL API.
 
 Only the manager-authored free-text fields of a task are translated. Results are
 cached per task + language by db.set_translation, keyed on a hash of the source
 text so edits trigger a fresh translation. No third-party SDK — raw HTTPS like
 supa_admin.py — so there's nothing extra to install on Railway.
+
+DeepL is used (not an LLM) because task briefs are often explicit: a mechanical
+MT engine translates that content literally without refusing or softening it,
+and its PT/ES quality is excellent. Swapping engines means re-implementing only
+translate_map(); flatten/apply/cache stay the same.
 """
 import os
 import json
@@ -12,18 +17,22 @@ import urllib.request
 import urllib.error
 import copy
 
-API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
-API_URL = "https://api.anthropic.com/v1/messages"
+DEEPL_KEY = os.getenv("DEEPL_API_KEY", "")
 
-LANG_NAMES = {
-    "pt": "Brazilian Portuguese (pt-BR)",
-    "es": "Latin American Spanish (es)",
-}
+# DeepL free-tier keys end with ":fx" and use a separate host.
+def _api_url() -> str:
+    host = "api-free.deepl.com" if DEEPL_KEY.endswith(":fx") else "api.deepl.com"
+    return f"https://{host}/v2/translate"
+
+# Our app langs → DeepL target codes (Brazilian PT, Spanish).
+DEEPL_TARGET = {"pt": "PT-BR", "es": "ES"}
+
+# DeepL allows up to 50 texts per request.
+_BATCH = 50
 
 
 def enabled() -> bool:
-    return bool(API_KEY)
+    return bool(DEEPL_KEY)
 
 
 def hash_map(flat: dict) -> str:
@@ -94,65 +103,40 @@ def apply_translation(task: dict, tr: dict) -> dict:
     return res
 
 
-def _call(system: str, user: str) -> str:
-    body = json.dumps({
-        "model": MODEL,
-        "max_tokens": 4000,
-        "system": system,
-        "messages": [{"role": "user", "content": user}],
-    }).encode("utf-8")
+def _deepl_batch(values: list, target: str) -> list:
+    """Translate a single batch (<=50 texts) and return texts in the same order."""
+    body = json.dumps({"text": values, "target_lang": target}).encode("utf-8")
     req = urllib.request.Request(
-        API_URL, data=body, method="POST",
+        _api_url(), data=body, method="POST",
         headers={
-            "x-api-key": API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
+            "Authorization": f"DeepL-Auth-Key {DEEPL_KEY}",
+            "Content-Type": "application/json",
         },
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         data = json.loads(r.read().decode("utf-8"))
-    parts = [b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"]
-    return "".join(parts)
-
-
-def _parse_json(out: str) -> dict:
-    out = (out or "").strip()
-    if out.startswith("```"):
-        out = out.strip("`")
-        if out[:4].lower() == "json":
-            out = out[4:]
-        out = out.strip()
-    try:
-        return json.loads(out)
-    except Exception:
-        i, j = out.find("{"), out.rfind("}")
-        if 0 <= i < j:
-            try:
-                return json.loads(out[i:j + 1])
-            except Exception:
-                return {}
-        return {}
+    return [t.get("text", "") for t in (data.get("translations") or [])]
 
 
 def translate_map(texts: dict, lang: str) -> dict:
-    """Translate {key: text} string values into the target language via Claude."""
+    """Translate {key: text} string values into the target language via DeepL."""
     items = {k: v for k, v in texts.items() if isinstance(v, str) and v.strip()}
     if not items or not enabled():
         return {}
-    target = LANG_NAMES.get(lang, lang)
-    system = (
-        "You are a professional translator for a content-creator management agency. "
-        f"Translate the JSON string VALUES into {target}. Keep the tone natural, warm, friendly and "
-        "clear for the creator who will read it. Do NOT translate or change the JSON keys. "
-        "Preserve emojis, line breaks, numbers, @handles, #hashtags, URLs and proper nouns. "
-        "Return ONLY a valid JSON object with exactly the same keys and the translated values — no commentary, no code fences."
-    )
-    user = json.dumps(items, ensure_ascii=False)
-    try:
-        out = _call(system, user)
-    except Exception as e:
-        print("translate warning:", e)
+    target = DEEPL_TARGET.get(lang)
+    if not target:
         return {}
-    result = _parse_json(out)
-    # keep only known keys with string values
-    return {k: v for k, v in result.items() if k in items and isinstance(v, str)}
+    keys = list(items.keys())
+    values = [items[k] for k in keys]
+    translated: list = []
+    try:
+        for i in range(0, len(values), _BATCH):
+            translated.extend(_deepl_batch(values[i:i + _BATCH], target))
+    except Exception as e:
+        print("translate (deepl) warning:", e)
+        return {}
+    out: dict = {}
+    for i, k in enumerate(keys):
+        if i < len(translated) and isinstance(translated[i], str):
+            out[k] = translated[i]
+    return out
