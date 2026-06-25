@@ -113,6 +113,8 @@ export const api = {
   updateTask: (id: string, data: any): Promise<TaskRow> =>
     req(`/api/tasks/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
   deleteTask: (id: string) => req(`/api/tasks/${id}`, { method: "DELETE" }),
+  translateTask: (taskId: string, lang: string): Promise<Partial<TaskRow>> =>
+    req(`/api/tasks/${taskId}/translate?lang=${lang}`),
   submitTask: (taskId: string, modelId: string) =>
     req(`/api/tasks/${taskId}/submit?model_id=${modelId}`, { method: "POST" }),
   reviewTask: (taskId: string, body: { model_id: string; status: string; review?: any }) =>

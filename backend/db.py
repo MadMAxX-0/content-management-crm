@@ -143,6 +143,14 @@ create table if not exists media (
   tags jsonb default '[]'::jsonb,
   created_at timestamptz default now()
 );
+create table if not exists task_translations (
+  task_id uuid references tasks(id) on delete cascade,
+  lang text not null,
+  source_hash text,
+  content jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now(),
+  primary key (task_id, lang)
+);
 """
 
 
@@ -357,9 +365,35 @@ def update_task(task_id: str, d: dict) -> dict:
         return dict(row)
 
 
+def get_task(task_id: str) -> dict | None:
+    with engine().connect() as c:
+        row = c.execute(text(f"select {TASK_COLS} from tasks where id = :id"), {"id": task_id}).mappings().first()
+        return dict(row) if row else None
+
+
 def delete_task(task_id: str) -> None:
     with engine().begin() as c:
         c.execute(text("delete from tasks where id = :id"), {"id": task_id})
+
+
+# ── task content translations (cached per task + language) ──
+def get_translation(task_id: str, lang: str) -> dict | None:
+    with engine().connect() as c:
+        row = c.execute(
+            text("select source_hash, content from task_translations where task_id = :t and lang = :l"),
+            {"t": task_id, "l": lang},
+        ).mappings().first()
+        return dict(row) if row else None
+
+
+def set_translation(task_id: str, lang: str, source_hash: str, content: dict) -> None:
+    with engine().begin() as c:
+        c.execute(
+            text("insert into task_translations (task_id, lang, source_hash, content) "
+                 "values (:t, :l, :h, cast(:c as jsonb)) "
+                 "on conflict (task_id, lang) do update set source_hash = :h, content = cast(:c as jsonb), created_at = now()"),
+            {"t": task_id, "l": lang, "h": source_hash, "c": _json(content or {})},
+        )
 
 
 # ───────────────────── Roles (DB-backed grants) ─────────────────────

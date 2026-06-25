@@ -29,6 +29,8 @@ export default function CreatorApp() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [folders, setFolders] = useState<Record<string, string>>({}); // folderName -> id
   const [loading, setLoading] = useState(false);
+  const [trans, setTrans] = useState<Record<string, Partial<TaskRow>>>({}); // `${lang}:${taskId}` -> translated fields
+  const [translating, setTranslating] = useState(false);
   const { me } = useAuth();
   const { lang, setLang, t } = useAppLang();
   const isCreator = me?.role === "creator";
@@ -67,8 +69,41 @@ export default function CreatorApp() {
     }
   };
 
+  // Translate task content into the chosen language (cached server-side; each
+  // task fetched once per language and reused). EN shows the original text.
+  useEffect(() => {
+    if (lang === "en" || tasks.length === 0) return;
+    const missing = tasks.filter((tk) => !trans[`${lang}:${tk.id}`]);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    setTranslating(true);
+    (async () => {
+      for (const tk of missing) {
+        try {
+          const r = await api.translateTask(tk.id, lang);
+          if (cancelled) return;
+          setTrans((p) => ({ ...p, [`${lang}:${tk.id}`]: r || {} }));
+        } catch {
+          if (cancelled) return;
+          setTrans((p) => ({ ...p, [`${lang}:${tk.id}`]: {} })); // mark attempted, don't retry-loop
+        }
+      }
+      if (!cancelled) setTranslating(false);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, tasks]);
+
+  const viewTask = (tk: TaskRow): TaskRow => {
+    if (lang === "en") return tk;
+    const tr = trans[`${lang}:${tk.id}`];
+    return tr ? { ...tk, ...tr } : tk;
+  };
+
   const model = models.find((m) => m.id === modelId);
-  const open = tasks.find((tk) => tk.id === openId) || null;
+  const openRaw = tasks.find((tk) => tk.id === openId) || null;
+  const open = openRaw ? viewTask(openRaw) : null;
+  const shownTasks = tasks.map(viewTask);
 
   return (
     <div className="content creator">
@@ -79,6 +114,7 @@ export default function CreatorApp() {
         </div>
         <div className="cv-head-tools">
           <LangSwitch lang={lang} setLang={setLang} />
+          {translating && <span className="cv-translating"><Icon name="refresh" className="spin" /> {lang === "pt" ? "Traduzindo…" : lang === "es" ? "Traduciendo…" : "Translating…"}</span>}
           {!isCreator && (
             <div className="cv-as">
               <span className="sub">{t("viewingAs")}</span>
@@ -103,7 +139,7 @@ export default function CreatorApp() {
         </div>
         <div className="cv-screen">
           {!open ? (
-            <TaskList tasks={tasks} loading={loading} model={model} onOpen={openTask} t={t} />
+            <TaskList tasks={shownTasks} loading={loading} model={model} onOpen={openTask} t={t} />
           ) : (
             <TaskDetail task={open} modelId={modelId} folders={folders} t={t} onBack={() => setOpenId(null)} onChanged={() => loadTasks(modelId)} />
           )}

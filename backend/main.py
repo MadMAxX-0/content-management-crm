@@ -11,6 +11,7 @@ import auth
 import db
 import drive
 import supa_admin
+import translate
 
 app = FastAPI(title="Content Management CRM — Drive Backend")
 
@@ -263,6 +264,40 @@ def model_tasks(model_id: str, user: dict = Depends(current_user)):
     if not db.enabled():
         return []
     return db.list_model_tasks(model_id)
+
+
+@app.get("/api/tasks/{task_id}/translate")
+def task_translate(task_id: str, lang: str = Query(...), user: dict = Depends(current_user)):
+    """Translate a task's manager-authored content into the creator's language.
+    Cached per task + language; re-translated only when the source text changes."""
+    _require_db()
+    if lang == "en":
+        return {}
+    task = db.get_task(task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    flat = translate.flatten_task(task)
+    if not flat:
+        return {}
+    src_hash = translate.hash_map(flat)
+    cached = db.get_translation(task_id, lang)
+    if cached and cached.get("source_hash") == src_hash and cached.get("content"):
+        tr = cached["content"]
+    else:
+        if not translate.enabled():
+            raise HTTPException(503, "Translation is not configured")
+        tr = translate.translate_map(flat, lang)
+        if tr:
+            db.set_translation(task_id, lang, src_hash, tr)
+    applied = translate.apply_translation(task, tr)
+    return {
+        "title": applied.get("title"),
+        "description": applied.get("description"),
+        "manager_notes": applied.get("manager_notes"),
+        "extra_tips": applied.get("extra_tips"),
+        "captions": applied.get("captions"),
+        "data": applied.get("data"),
+    }
 
 
 @app.post("/api/models/{model_id}/approve")
