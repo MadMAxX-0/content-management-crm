@@ -135,6 +135,14 @@ alter table todo_tasks add column if not exists priority text default 'none';
 alter table todo_tasks add column if not exists due_date date;
 alter table todo_tasks add column if not exists description text;
 alter table todo_tasks add column if not exists updated_at timestamptz default now();
+create table if not exists media (
+  drive_file_id text primary key,
+  category text,
+  uploaded_by text,
+  model_id uuid references models(id) on delete set null,
+  tags jsonb default '[]'::jsonb,
+  created_at timestamptz default now()
+);
 """
 
 
@@ -616,6 +624,27 @@ def update_todo_task(task_id: str, fields: dict) -> None:
 def delete_todo_task(task_id: str) -> None:
     with engine().begin() as c:
         c.execute(text("delete from todo_tasks where id = :id"), {"id": task_id})
+
+
+# ───────────────────── Media metadata (Gallery categories) ─────────────────────
+def media_map() -> dict:
+    """{drive_file_id: {category, uploaded_by}} for category overrides."""
+    with engine().connect() as c:
+        rows = c.execute(text("select drive_file_id, category, uploaded_by from media")).mappings().all()
+        return {r["drive_file_id"]: dict(r) for r in rows}
+
+
+def set_media(file_id: str, category: str | None, uploaded_by: str | None) -> None:
+    with engine().begin() as c:
+        c.execute(text(
+            "insert into media (drive_file_id, category, uploaded_by) values (:f, :c, :u) "
+            "on conflict (drive_file_id) do update set category = excluded.category"
+        ), {"f": file_id, "c": category, "u": uploaded_by})
+
+
+def delete_media(file_id: str) -> None:
+    with engine().begin() as c:
+        c.execute(text("delete from media where drive_file_id = :f"), {"f": file_id})
 
 
 def _json(v):

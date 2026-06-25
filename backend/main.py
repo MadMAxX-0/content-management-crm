@@ -613,9 +613,36 @@ def gallery(user: dict = Depends(require_admin)):
     if not drive.is_connected():
         raise HTTPException(400, "Google Drive is not connected.")
     try:
-        return drive.list_media()
+        items = drive.list_media()
     except Exception as e:
         raise HTTPException(400, f"Could not load gallery: {e}")
+    if db.enabled():
+        mmap = db.media_map()
+        for it in items:
+            row = mmap.get(it["id"])
+            if row and row.get("category"):
+                it["category"] = row["category"]
+    return items
+
+
+@app.post("/api/gallery/upload")
+async def gallery_upload(category: str = Query(...), file: UploadFile = File(...),
+                         user: dict = Depends(require_admin)):
+    if not drive.is_connected():
+        raise HTTPException(400, "Google Drive is not connected.")
+    folder = drive.gallery_folder(category)
+    content = await file.read()
+    res = drive.upload_file(folder, file.filename, content, file.content_type)
+    if db.enabled():
+        db.set_media(res["id"], category, user.get("email"))
+    return res
+
+
+@app.post("/api/gallery/{file_id}/category")
+def gallery_set_category(file_id: str, payload: dict = Body(...), user: dict = Depends(require_admin)):
+    _require_db()
+    db.set_media(file_id, payload.get("category"), user.get("email"))
+    return {"ok": True}
 
 
 # serve any other static assets

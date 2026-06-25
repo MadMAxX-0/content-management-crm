@@ -208,13 +208,16 @@ def list_media() -> list[dict]:
     folders = _list_all(f"mimeType = '{FOLDER_MIME}' and trashed = false", "id,name,parents")
     fmap = {f["id"]: f for f in folders}
 
-    # locate the models/ folder so we can resolve each file's owning model
+    # locate the models/ and gallery/ folders so we can categorize each file
     root = get_root()
-    models_id = None
+    models_id = gallery_id = None
     if root:
         for f in folders:
-            if f.get("name") == "models" and root["id"] in (f.get("parents") or []):
-                models_id = f["id"]; break
+            if root["id"] in (f.get("parents") or []):
+                if f.get("name") == "models":
+                    models_id = f["id"]
+                elif f.get("name") == "gallery":
+                    gallery_id = f["id"]
 
     media = _list_all(
         "(mimeType contains 'image/' or mimeType contains 'video/') and trashed = false",
@@ -224,27 +227,50 @@ def list_media() -> list[dict]:
     for m in media:
         parents = m.get("parents") or []
         parent = parents[0] if parents else None
-        folder_name = fmap.get(parent, {}).get("name") if parent else None
-        # walk up the folder chain to the model folder (child of models/)
+        parent_folder = fmap.get(parent) if parent else None
+        folder_name = parent_folder.get("name") if parent_folder else None
+        kind = "Image" if (m.get("mimeType") or "").startswith("image/") else "Video"
+
+        # walk up to the model folder (child of models/), capturing its id
         model = None
+        model_folder_id = None
         node, guard = parent, 0
         while node and guard < 25:
             f = fmap.get(node)
             if not f:
                 break
             if models_id and models_id in (f.get("parents") or []):
-                model = f.get("name"); break
+                model = f.get("name"); model_folder_id = node; break
             node = (f.get("parents") or [None])[0]
             guard += 1
         if model and "_" in model:
             model = model.rsplit("_", 1)[0]
+
+        # derive a category from the folder structure (DB overrides this later)
+        category = None
+        if gallery_id and parent_folder and gallery_id in (parent_folder.get("parents") or []):
+            category = parent_folder.get("name")  # gallery/<Category>/file
+        elif model_folder_id:
+            base = "Model Media" if parent == model_folder_id else "Task Content"
+            category = f"{base} ({kind})"
+
         out.append({
             "id": m["id"], "name": m["name"], "mimeType": m.get("mimeType"),
             "size": m.get("size"), "modifiedTime": m.get("modifiedTime"),
-            "model": model, "folder": folder_name,
+            "model": model, "folder": folder_name, "category": category,
         })
     out.sort(key=lambda x: x.get("modifiedTime") or "", reverse=True)
     return out
+
+
+def gallery_folder(category: str) -> str:
+    """Ensure youtopia_crm/gallery/<Category>/ exists; return its id."""
+    root = get_root()
+    if not root:
+        raise RuntimeError("CRM structure not initialised. Connect first.")
+    gal = find_or_create_folder("gallery", root["id"])
+    sub = find_or_create_folder(category or "Uncategorized", gal["id"])
+    return sub["id"]
 
 
 # ───────────────────── CRM structure ─────────────────────

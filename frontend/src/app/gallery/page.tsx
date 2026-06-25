@@ -7,6 +7,8 @@ type View = "grid" | "list" | "masonry" | "table";
 const isImg = (m?: string) => !!m && m.startsWith("image/");
 const isVid = (m?: string) => !!m && m.startsWith("video/");
 const thumb = (id: string) => `${apiBase}/api/file/${id}/content`;
+const CATEGORIES = ["Profile", "Bottleneck", "ID", "Model Media (Image)", "Model Media (Video)", "Task Content (Image)", "Task Content (Video)", "Department", "Notes"];
+const UPLOAD_CATS = ["Profile", "Bottleneck", "ID", "Department", "Notes"];
 
 export default function GalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
@@ -16,7 +18,11 @@ export default function GalleryPage() {
   const [q, setQ] = useState("");
   const [type, setType] = useState("all");
   const [who, setWho] = useState("all");
+  const [cat, setCat] = useState("all");
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [showUpload, setShowUpload] = useState(false);
+  const [upCat, setUpCat] = useState(UPLOAD_CATS[0]);
+  const [upBusy, setUpBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null); setSel(new Set());
@@ -28,7 +34,17 @@ export default function GalleryPage() {
   const list = items.filter((i) =>
     i.name.toLowerCase().includes(q.toLowerCase()) &&
     (type === "all" || (type === "image" && isImg(i.mimeType)) || (type === "video" && isVid(i.mimeType))) &&
-    (who === "all" || i.model === who));
+    (who === "all" || i.model === who) &&
+    (cat === "all" || i.category === cat));
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUpBusy(true); setErr(null);
+    try {
+      for (const f of Array.from(files)) await api.galleryUpload(f, upCat);
+      setShowUpload(false); await load();
+    } catch (e: any) { setErr(e.message); } finally { setUpBusy(false); }
+  };
 
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const download = () => list.filter((i) => sel.has(i.id)).forEach((i) => window.open(`${apiBase}/api/file/${i.id}/content?download=1`, "_blank"));
@@ -57,6 +73,7 @@ export default function GalleryPage() {
           <h1><Icon name="gallery" /> Gallery <span className="badge b-soft" style={{ verticalAlign: "middle" }}><Icon name="database" /> Drive</span></h1>
           <p>Manage and organize your media files — everything uploaded across the Drive.</p>
         </div>
+        <button className="btn brand" onClick={() => setShowUpload(true)}><Icon name="upload" /> Upload</button>
       </div>
 
       <div className="gl-layout">
@@ -71,6 +88,11 @@ export default function GalleryPage() {
           <select className="inp" value={who} onChange={(e) => setWho(e.target.value)}>
             <option value="all">All Models</option>
             {models.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <label className="lbl-f" style={{ marginTop: 12 }}>Category</label>
+          <select className="inp" value={cat} onChange={(e) => setCat(e.target.value)}>
+            <option value="all">All Categories</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </aside>
 
@@ -139,6 +161,31 @@ export default function GalleryPage() {
           <button className="btn" onClick={download}><Icon name="download" /> Download</button>
           <button className="btn danger" onClick={removeSel}><Icon name="trash" /> Delete</button>
           <button className="icon-btn" onClick={() => setSel(new Set())}><Icon name="x" /></button>
+        </div>
+      )}
+
+      {showUpload && (
+        <div className="overlay" onClick={() => setShowUpload(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3><Icon name="upload" /> Upload to Gallery</h3>
+            <p className="sub" style={{ margin: "2px 0 0" }}>Add files and tag them with a category.</p>
+            <div className="form-grid">
+              <div className="full"><label className="lbl-f">Category</label>
+                <select className="inp" value={upCat} onChange={(e) => setUpCat(e.target.value)}>
+                  {UPLOAD_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="full">
+                <label className={`upload-tile ${upBusy ? "busy" : ""}`}>
+                  <input type="file" multiple hidden disabled={upBusy} onChange={(e) => upload(e.target.files)} />
+                  {upBusy ? <><Icon name="refresh" className="spin" /> Uploading…</> : <><Icon name="upload" /> Choose files</>}
+                </label>
+              </div>
+            </div>
+            <div className="actions">
+              <button className="btn" onClick={() => setShowUpload(false)}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

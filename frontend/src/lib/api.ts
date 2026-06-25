@@ -144,6 +144,12 @@ export const api = {
 
   // gallery (media library)
   gallery: (): Promise<GalleryItem[]> => req("/api/gallery"),
+  galleryUpload: (file: File, category: string): Promise<GalleryItem> => {
+    const fd = new FormData(); fd.append("file", file);
+    return req(`/api/gallery/upload?category=${encodeURIComponent(category)}`, { method: "POST", body: fd });
+  },
+  gallerySetCategory: (fileId: string, category: string) =>
+    req(`/api/gallery/${fileId}/category`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category }) }),
 
   // todo (Office app)
   todoLists: (): Promise<TodoList[]> => req("/api/todo/lists"),
@@ -197,7 +203,7 @@ export type KanbanBoardFull = KanbanBoard & { lists: KanbanList[] };
 
 export type GalleryItem = {
   id: string; name: string; mimeType?: string; size?: string | null;
-  modifiedTime?: string; model?: string | null; folder?: string | null;
+  modifiedTime?: string; model?: string | null; folder?: string | null; category?: string | null;
 };
 
 export type TodoStatus = "todo" | "in_progress" | "done";
