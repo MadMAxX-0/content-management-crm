@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { api, UserRow, fmtDate } from "@/lib/api";
 
@@ -10,6 +10,14 @@ const ROLE_META: Record<string, { label: string; cls: string }> = {
   none: { label: "No access", cls: "b-amber" },
 };
 
+const TABS: { key: string; label: string; icon: string }[] = [
+  { key: "all", label: "All", icon: "users" },
+  { key: "admin", label: "Admins", icon: "star" },
+  { key: "va", label: "VAs", icon: "clip" },
+  { key: "creator", label: "Creators", icon: "phone" },
+  { key: "none", label: "Unassigned", icon: "user" },
+];
+
 const EMPTY = { email: "", password: "", role: "va" };
 
 export default function UsersPage() {
@@ -18,6 +26,8 @@ export default function UsersPage() {
   const [err, setErr] = useState<string | null>(null);
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState("all");
+  const [q, setQ] = useState("");
   const [f, setF] = useState({ ...EMPTY });
 
   const load = useCallback(async () => {
@@ -48,14 +58,20 @@ export default function UsersPage() {
     try { await api.deleteUser(u.id, u.email || ""); await load(); } catch (e: any) { setErr(e.message); }
   };
 
-  const counts = users.reduce((a, u) => { a[u.role] = (a[u.role] || 0) + 1; return a; }, {} as Record<string, number>);
+  const counts = useMemo(
+    () => users.reduce((a, u) => { a[u.role] = (a[u.role] || 0) + 1; return a; }, {} as Record<string, number>),
+    [users]
+  );
+  const list = users.filter(
+    (u) => (tab === "all" || u.role === tab) && (u.email || "").toLowerCase().includes(q.toLowerCase())
+  );
 
   return (
     <div className="content">
       <div className="page-head">
         <div>
           <h1><Icon name="users" /> Manage Users <span className="count" style={{ verticalAlign: "middle" }}>{users.length} total</span></h1>
-          <p>Login accounts and what each person can access.</p>
+          <p>Login accounts, roles, and what each person can access.</p>
         </div>
         <div className="btn-row">
           <button className="btn" onClick={load}><Icon name="refresh" className={loading ? "spin" : ""} /> Refresh</button>
@@ -63,36 +79,49 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="card pad" style={{ marginBottom: 18 }}>
-        <div className="role-key">
-          <span><b className="badge b-green">Admin</b> Full CRM access</span>
-          <span><b className="badge b-soft">VA</b> Model Tasks only</span>
-          <span><b className="badge b-pink">Creator</b> Their own task view (linked to a model)</span>
-          <span><b className="badge b-amber">No access</b> Signed up but not assigned</span>
-        </div>
+      <div className="utabs">
+        {TABS.map((t) => (
+          <button key={t.key} className={tab === t.key ? "active" : ""} onClick={() => setTab(t.key)}>
+            <Icon name={t.icon} /> {t.label}
+            <span className="ut-count">{t.key === "all" ? users.length : counts[t.key] || 0}</span>
+          </button>
+        ))}
       </div>
 
       {err && <div className="note">{err}</div>}
 
       <div className="card pad">
-        <div className="panel-title">Users ({users.length})</div>
-        <div className="panel-sub">
-          {counts.admin || 0} admin · {counts.va || 0} VA · {counts.creator || 0} creator · {counts.none || 0} unassigned
+        <div className="users-bar">
+          <div className="search-inp"><Icon name="search" /><input placeholder="Search by email…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="role-key">
+            <span><b className="badge b-green">Admin</b> Full access</span>
+            <span><b className="badge b-soft">VA</b> Model Tasks</span>
+            <span><b className="badge b-pink">Creator</b> Own tasks</span>
+          </div>
         </div>
+
         {loading ? (
           <div className="empty"><Icon name="refresh" className="spin" /> Loading…</div>
-        ) : users.length === 0 ? (
-          <div className="empty">No login accounts yet. Add one to grant access.</div>
+        ) : list.length === 0 ? (
+          <div className="empty">{users.length === 0 ? "No login accounts yet. Add one to grant access." : "No users match."}</div>
         ) : (
           <div className="table-wrap">
             <table className="tbl">
-              <thead><tr><th>Email</th><th>Role</th><th>Linked model</th><th>Last sign-in</th><th style={{ width: 60 }}></th></tr></thead>
+              <thead><tr><th>User</th><th>Role</th><th>Linked model</th><th>Last sign-in</th><th style={{ width: 60 }}></th></tr></thead>
               <tbody>
-                {users.map((u) => {
+                {list.map((u) => {
                   const rm = ROLE_META[u.role] || ROLE_META.none;
+                  const initial = (u.model || u.email || "?").charAt(0).toUpperCase();
                   return (
                     <tr key={u.id}>
-                      <td><b>{u.email}</b>{u.is_self && <span className="sub"> (you)</span>}</td>
+                      <td>
+                        <div className="u-cell">
+                          <span className={`u-av r-${u.role}`}>{initial}</span>
+                          <span className="u-meta">
+                            <b>{u.email}</b>{u.is_self && <span className="sub"> (you)</span>}
+                          </span>
+                        </div>
+                      </td>
                       <td>
                         {u.locked ? (
                           <span className={`badge ${rm.cls}`}><Icon name="power" /> {rm.label}</span>
@@ -122,7 +151,7 @@ export default function UsersPage() {
           </div>
         )}
         <div className="panel-sub" style={{ marginTop: 12 }}>
-          <Icon name="info" /> Accounts marked with a power icon are set on the server (Railway) and can't be changed here.
+          <Icon name="info" /> Accounts with a power icon are set on the server (Railway) and can't be changed here.
           Creators are linked automatically when their email matches a model.
         </div>
       </div>
