@@ -333,6 +333,30 @@ def review_assignee(task_id: str, model_id: str, status: str, review: dict) -> N
         )
 
 
+def update_task(task_id: str, d: dict) -> dict:
+    """Edit a task/template's content fields. Assignees are managed separately."""
+    sets = [
+        "title=:title", "description=:description", "type=:type",
+        "status=coalesce(:status, status)", "priority=coalesce(:priority, priority)",
+        "due_date=:due_date", "manager_notes=:manager_notes",
+        "extra_tips=:extra_tips", "captions=:captions",
+        "tags=cast(:tags as jsonb)", "data=cast(:data as jsonb)",
+    ]
+    params = {
+        "id": task_id, "title": d.get("title"), "description": d.get("description"),
+        "type": d.get("type"), "status": d.get("status"), "priority": d.get("priority"),
+        "due_date": d.get("due_date") or None, "manager_notes": d.get("manager_notes"),
+        "extra_tips": d.get("extra_tips"), "captions": d.get("captions"),
+        "tags": _json(d.get("tags") or []), "data": _json(d.get("data") or {}),
+    }
+    with engine().begin() as c:
+        row = c.execute(
+            text(f"update tasks set {', '.join(sets)} where id = :id returning {TASK_COLS}"),
+            params,
+        ).mappings().one()
+        return dict(row)
+
+
 def delete_task(task_id: str) -> None:
     with engine().begin() as c:
         c.execute(text("delete from tasks where id = :id"), {"id": task_id})

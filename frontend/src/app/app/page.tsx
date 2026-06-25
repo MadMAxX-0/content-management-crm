@@ -2,10 +2,25 @@
 import { useCallback, useEffect, useState } from "react";
 import Icon from "@/components/Icon";
 import { api, ModelRow, TaskRow, DriveItem, FOLDER_MIME, apiBase, fmtDate } from "@/lib/api";
-import { slotsForTask, statusMeta, TYPE_LABEL, TYPE_ICON, Slot } from "@/lib/slots";
+import { slotsForTask, statusMeta, TYPE_ICON, Slot } from "@/lib/slots";
 import { useAuth } from "@/components/auth-context";
+import { useAppLang, LANGS, Lang, TFn, ST_KEY, TYPE_KEY } from "@/lib/appLang";
 
 const isImg = (m?: string) => !!m && m.startsWith("image/");
+const typeLabel = (t: TFn, type?: string | null) => t(TYPE_KEY[type || ""] || "typeTask");
+const statusLabel = (t: TFn, s?: string) => t(ST_KEY[s || ""] || "stTodo");
+
+function LangSwitch({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
+  return (
+    <div className="cv-lang">
+      {LANGS.map((l) => (
+        <button key={l.code} className={lang === l.code ? "on" : ""} onClick={() => setLang(l.code)}>
+          <span>{l.flag}</span> {l.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function CreatorApp() {
   const [models, setModels] = useState<ModelRow[]>([]);
@@ -15,6 +30,7 @@ export default function CreatorApp() {
   const [folders, setFolders] = useState<Record<string, string>>({}); // folderName -> id
   const [loading, setLoading] = useState(false);
   const { me } = useAuth();
+  const { lang, setLang, t } = useAppLang();
   const isCreator = me?.role === "creator";
 
   useEffect(() => {
@@ -39,11 +55,11 @@ export default function CreatorApp() {
   }, []);
   useEffect(() => { if (modelId) { setOpenId(null); loadTasks(modelId); } }, [modelId, loadTasks]);
 
-  const openTask = async (t: TaskRow) => {
-    setOpenId(t.id); setFolders({});
-    if (t.upload_folder_id) {
+  const openTask = async (tk: TaskRow) => {
+    setOpenId(tk.id); setFolders({});
+    if (tk.upload_folder_id) {
       try {
-        const r = await api.folder(t.upload_folder_id);
+        const r = await api.folder(tk.upload_folder_id);
         const map: Record<string, string> = {};
         (r.items || []).filter((x) => x.mimeType === FOLDER_MIME).forEach((f) => (map[f.name] = f.id));
         setFolders(map);
@@ -52,59 +68,75 @@ export default function CreatorApp() {
   };
 
   const model = models.find((m) => m.id === modelId);
-  const open = tasks.find((t) => t.id === openId) || null;
+  const open = tasks.find((tk) => tk.id === openId) || null;
 
   return (
     <div className="content creator">
       <div className="page-head">
         <div>
-          <h1><Icon name="phone" /> Creator App</h1>
-          <p>The creator's view — assigned requests and content upload.</p>
+          <h1><Icon name="phone" /> {t("headTitle")}</h1>
+          <p>{t("headSub")}</p>
         </div>
-        {!isCreator && (
-          <div className="cv-as">
-            <span className="sub">Viewing as</span>
-            <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
-              {models.length === 0 && <option value="">No models</option>}
-              {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-          </div>
-        )}
+        <div className="cv-head-tools">
+          <LangSwitch lang={lang} setLang={setLang} />
+          {!isCreator && (
+            <div className="cv-as">
+              <span className="sub">{t("viewingAs")}</span>
+              <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
+                {models.length === 0 && <option value="">No models</option>}
+                {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
-      {!open ? (
-        <TaskList tasks={tasks} loading={loading} model={model} onOpen={openTask} />
-      ) : (
-        <TaskDetail task={open} modelId={modelId} folders={folders} onBack={() => setOpenId(null)} onChanged={() => loadTasks(modelId)} />
-      )}
+      <div className="cv-phone">
+        <div className="cv-island" />
+        <div className="cv-statusbar">
+          <span className="cv-time">9:41</span>
+          <span className="cv-sys">
+            <span className="cv-sig"><i /><i /><i /><i /></span>
+            <span className="cv-5g">5G</span>
+            <span className="cv-batt" />
+          </span>
+        </div>
+        <div className="cv-screen">
+          {!open ? (
+            <TaskList tasks={tasks} loading={loading} model={model} onOpen={openTask} t={t} />
+          ) : (
+            <TaskDetail task={open} modelId={modelId} folders={folders} t={t} onBack={() => setOpenId(null)} onChanged={() => loadTasks(modelId)} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function TaskList({ tasks, loading, model, onOpen }: {
-  tasks: TaskRow[]; loading: boolean; model?: ModelRow; onOpen: (t: TaskRow) => void;
+function TaskList({ tasks, loading, model, onOpen, t }: {
+  tasks: TaskRow[]; loading: boolean; model?: ModelRow; onOpen: (t: TaskRow) => void; t: TFn;
 }) {
-  if (loading) return <div className="cv-wrap"><div className="empty-row">Loading…</div></div>;
-  if (!model) return <div className="cv-wrap"><div className="empty-row">No model selected.</div></div>;
+  if (loading) return <div className="cv-wrap"><div className="empty-row">{t("loading")}</div></div>;
+  if (!model) return <div className="cv-wrap"><div className="empty-row">{t("noModel")}</div></div>;
   return (
     <div className="cv-wrap">
       <div className="cv-greet">
         <span className="fav lg">{model.name.charAt(0).toUpperCase()}</span>
         <div>
-          <div className="cv-hi">Hi {model.name} 👋</div>
-          <div className="sub">{tasks.length === 0 ? "No assigned tasks yet." : `${tasks.length} assigned ${tasks.length === 1 ? "task" : "tasks"}`}</div>
+          <div className="cv-hi">{t("greet", { name: model.name })}</div>
+          <div className="sub">{tasks.length === 0 ? t("noTasks") : t(tasks.length === 1 ? "taskCount_one" : "taskCount_other", { n: tasks.length })}</div>
         </div>
       </div>
-      {tasks.map((t) => {
-        const sm = statusMeta(t.assignee_status);
+      {tasks.map((tk) => {
+        const sm = statusMeta(tk.assignee_status);
         return (
-          <button className="cv-task-card" key={t.id} onClick={() => onOpen(t)}>
-            <span className="ct-ic"><Icon name={TYPE_ICON[t.type || ""] || "clip"} /></span>
+          <button className={`cv-task-card st-${tk.assignee_status || "todo"}`} key={tk.id} onClick={() => onOpen(tk)}>
+            <span className="ct-ic"><Icon name={TYPE_ICON[tk.type || ""] || "clip"} /></span>
             <span className="ct-main">
-              <span className="ct-title">{t.title}</span>
-              <span className="ct-sub">{TYPE_LABEL[t.type || ""] || "Task"}{t.due_date ? ` · due ${fmtDate(t.due_date)}` : ""}</span>
+              <span className="ct-title">{tk.title}</span>
+              <span className="ct-sub">{typeLabel(t, tk.type)}{tk.due_date ? ` · ${t("due", { date: fmtDate(tk.due_date) })}` : ""}</span>
             </span>
-            <span className={`badge ${sm.cls}`}>{sm.label}</span>
+            <span className={`badge ${sm.cls}`}>{statusLabel(t, tk.assignee_status)}</span>
             <Icon name="chevr" className="ct-go" />
           </button>
         );
@@ -113,8 +145,8 @@ function TaskList({ tasks, loading, model, onOpen }: {
   );
 }
 
-function TaskDetail({ task, modelId, folders, onBack, onChanged }: {
-  task: TaskRow; modelId: string; folders: Record<string, string>; onBack: () => void; onChanged: () => void;
+function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
+  task: TaskRow; modelId: string; folders: Record<string, string>; t: TFn; onBack: () => void; onChanged: () => void;
 }) {
   const d = task.data || {};
   const slots = slotsForTask(task);
@@ -131,49 +163,49 @@ function TaskDetail({ task, modelId, folders, onBack, onChanged }: {
 
   return (
     <div className="cv-wrap">
-      <button className="btn sm" onClick={onBack}><Icon name="chevr" style={{ transform: "rotate(180deg)" }} /> Back</button>
+      <button className="btn sm" onClick={onBack}><Icon name="chevr" style={{ transform: "rotate(180deg)" }} /> {t("back")}</button>
 
       <div className="cv-detail-head">
         <span className="ct-ic lg"><Icon name={TYPE_ICON[task.type || ""] || "clip"} /></span>
         <div>
           <h2>{task.title}</h2>
-          <div className="sub">{TYPE_LABEL[task.type || ""] || "Task"}{task.due_date ? ` · due ${fmtDate(task.due_date)}` : ""}</div>
+          <div className="sub">{typeLabel(t, task.type)}{task.due_date ? ` · ${t("due", { date: fmtDate(task.due_date) })}` : ""}</div>
         </div>
       </div>
 
-      {st === "approved" && <div className="cv-status ok"><Icon name="check" /> Approved — great work! 🎉</div>}
-      {st === "submitted" && <div className="cv-status wait"><Icon name="check" /> Submitted — awaiting manager review.</div>}
+      {st === "approved" && <div className="cv-status ok"><Icon name="check" /> {t("statusApproved")}</div>}
+      {st === "submitted" && <div className="cv-status wait"><Icon name="check" /> {t("statusSubmitted")}</div>}
       {st === "changes_requested" && (
         <div className="cv-status redo">
-          <Icon name="info" /> Changes requested — please review the notes below and re-upload.
+          <Icon name="info" /> {t("statusChanges")}
           {review._overall?.note && <div className="cs-note">{review._overall.note}</div>}
         </div>
       )}
 
-      {task.description && <Brief icon="info" title="Brief" body={task.description} />}
-      {task.manager_notes && <Brief icon="info" title="Manager's Notes" body={task.manager_notes} />}
+      {task.description && <Brief icon="info" title={t("briefBrief")} body={task.description} />}
+      {task.manager_notes && <Brief icon="info" title={t("briefNotes")} body={task.manager_notes} />}
       {Array.isArray(d.outfit) && d.outfit.some((o: string) => o?.trim()) &&
-        <Brief icon="shirt" title="Outfit Suggestions" body={d.outfit.filter((o: string) => o?.trim()).join("\n\n")} />}
-      {d.location && <Brief icon="camera" title="Shooting Location" body={d.location} />}
+        <Brief icon="shirt" title={t("briefOutfit")} body={d.outfit.filter((o: string) => o?.trim()).join("\n\n")} />}
+      {d.location && <Brief icon="camera" title={t("briefLocation")} body={d.location} />}
 
-      <div className="cv-slots-h">Upload your content</div>
+      <div className="cv-slots-h">{t("uploadHeader")}</div>
       {!task.upload_folder_id ? (
-        <div className="empty-row">No upload folder yet — ask your manager to set it up.</div>
+        <div className="empty-row">{t("noFolder")}</div>
       ) : slots.length === 0 ? (
-        <UploadSlot folderId={task.upload_folder_id} parentId={task.upload_folder_id} slot={{ label: task.title, folderName: "" }} review={review._overall} locked={locked} />
+        <UploadSlot folderId={task.upload_folder_id} parentId={task.upload_folder_id} slot={{ label: task.title, folderName: "" }} review={review._overall} locked={locked} t={t} />
       ) : (
         slots.map((s) => (
-          <UploadSlot key={s.label} folderId={folders[s.folderName]} parentId={task.upload_folder_id!} slot={s} review={review[s.folderName]} locked={locked} />
+          <UploadSlot key={s.label} folderId={folders[s.folderName]} parentId={task.upload_folder_id!} slot={s} review={review[s.folderName]} locked={locked} t={t} />
         ))
       )}
 
-      {task.extra_tips && <Brief icon="bulb" title="Extra Tips" body={task.extra_tips} />}
-      {task.captions && <Brief icon="clip" title="Captions" body={task.captions} />}
+      {task.extra_tips && <Brief icon="bulb" title={t("briefTips")} body={task.extra_tips} />}
+      {task.captions && <Brief icon="clip" title={t("briefCaptions")} body={task.captions} />}
 
       {st !== "approved" && (
         <button className="cv-submit" onClick={submit} disabled={busy || st === "submitted"}>
           {busy ? <Icon name="refresh" className="spin" /> : <Icon name="send" />}
-          {st === "submitted" ? "Submitted — awaiting review" : st === "changes_requested" ? "Re-submit for review" : "Submit for review"}
+          {st === "submitted" ? t("submittedWait") : st === "changes_requested" ? t("resubmit") : t("submit")}
         </button>
       )}
     </div>
@@ -189,8 +221,8 @@ function Brief({ icon, title, body }: { icon: string; title: string; body: strin
   );
 }
 
-function UploadSlot({ folderId, parentId, slot, review, locked }: {
-  folderId?: string; parentId: string; slot: Slot; review?: { state?: string; note?: string }; locked?: boolean;
+function UploadSlot({ folderId, parentId, slot, review, locked, t }: {
+  folderId?: string; parentId: string; slot: Slot; review?: { state?: string; note?: string }; locked?: boolean; t: TFn;
 }) {
   const [fid, setFid] = useState<string | undefined>(folderId);
   const [files, setFiles] = useState<DriveItem[] | null>(null);
@@ -225,8 +257,8 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
       setJustAdded(fl.length);
     } catch (e: any) {
       setErr(e?.message?.includes("401") || e?.message?.includes("403")
-        ? "Upload not allowed — please sign out and back in."
-        : "Upload failed. Check your connection and try again.");
+        ? t("uploadErrAuth")
+        : t("uploadErrFail"));
     } finally { setBusy(false); e.target.value = ""; }
   };
 
@@ -238,8 +270,8 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
       <div className="cs-head">
         <div className="cs-label"><Icon name="folder" /> {slot.label}</div>
         <span style={{ display: "inline-flex", gap: 6 }}>
-          {approved && <span className="badge b-green"><Icon name="check" /> Approved</span>}
-          {redo && <span className="badge b-amber">Redo</span>}
+          {approved && <span className="badge b-green"><Icon name="check" /> {t("badgeApproved")}</span>}
+          {redo && <span className="badge b-amber">{t("badgeRedo")}</span>}
           {count > 0 && <span className="badge b-green"><Icon name="check" /> {count}</span>}
         </span>
       </div>
@@ -269,14 +301,14 @@ function UploadSlot({ folderId, parentId, slot, review, locked }: {
       {err && <div className="cs-note" style={{ background: "#fff0f0", color: "#c0392b" }}>{err}</div>}
 
       {justAdded > 0 && !busy && (
-        <div className="cs-ok"><Icon name="check" /> {justAdded} {justAdded === 1 ? "file" : "files"} uploaded to {slot.label}</div>
+        <div className="cs-ok"><Icon name="check" /> {t(justAdded === 1 ? "uploadedFiles_one" : "uploadedFiles_other", { n: justAdded, label: slot.label })}</div>
       )}
 
       {!locked && (
         <label className={`upload-tile ${busy ? "busy" : ""}`}>
           <input type="file" multiple accept="image/*,video/*" onChange={onPick} disabled={busy} hidden />
-          {busy ? <><Icon name="refresh" className="spin" /> Uploading to {slot.label}…</>
-            : <><Icon name="upload" /> {count > 0 ? `Add more to ${slot.label}` : `Upload to ${slot.label}`}</>}
+          {busy ? <><Icon name="refresh" className="spin" /> {t("uploadingTo", { label: slot.label })}</>
+            : <><Icon name="upload" /> {count > 0 ? t("addMoreTo", { label: slot.label }) : t("uploadTo", { label: slot.label })}</>}
         </label>
       )}
     </div>

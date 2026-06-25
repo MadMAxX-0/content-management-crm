@@ -110,6 +110,8 @@ export const api = {
   listTasks: (templates = false): Promise<TaskRow[]> => req(`/api/tasks?templates=${templates ? 1 : 0}`),
   createTask: (data: any): Promise<TaskRow> =>
     req("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+  updateTask: (id: string, data: any): Promise<TaskRow> =>
+    req(`/api/tasks/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
   deleteTask: (id: string) => req(`/api/tasks/${id}`, { method: "DELETE" }),
   submitTask: (taskId: string, modelId: string) =>
     req(`/api/tasks/${taskId}/submit?model_id=${modelId}`, { method: "POST" }),

@@ -347,6 +347,15 @@ def tasks_create(payload: dict = Body(...), user: dict = Depends(require_tasks))
     return task
 
 
+@app.patch("/api/tasks/{task_id}")
+def tasks_update(task_id: str, payload: dict = Body(...), user: dict = Depends(require_tasks)):
+    """Edit a task or template's content. Assignment/folders are handled elsewhere."""
+    _require_db()
+    if "title" in payload and not (payload.get("title") or "").strip():
+        raise HTTPException(400, "title is required")
+    return db.update_task(task_id, payload)
+
+
 @app.post("/api/tasks/{task_id}/submit")
 def task_submit(task_id: str, model_id: str = Query(...), user: dict = Depends(current_user)):
     """Creator submits their uploaded content for manager review (own model only)."""

@@ -8,11 +8,14 @@ const isImg = (m?: string) => !!m && m.startsWith("image/");
 type Assignee = NonNullable<TaskRow["assignees"]>[number];
 
 export default function ReviewModal({
-  task, onClose, onReviewed,
-}: { task: TaskRow; onClose: () => void; onReviewed: () => void }) {
+  task, onClose, onReviewed, initialModelId,
+}: { task: TaskRow; onClose: () => void; onReviewed: () => void; initialModelId?: string }) {
   const assignees = task.assignees || [];
-  const firstSubmitted = assignees.find((a) => a.status === "submitted") || assignees[0];
-  const [sel, setSel] = useState<Assignee | undefined>(firstSubmitted);
+  const initial =
+    (initialModelId && assignees.find((a) => a.id === initialModelId)) ||
+    assignees.find((a) => a.status === "submitted") ||
+    assignees[0];
+  const [sel, setSel] = useState<Assignee | undefined>(initial);
   const [folders, setFolders] = useState<Record<string, string>>({});
   const [marks, setMarks] = useState<Record<string, { state: string; note: string }>>({});
   const [overall, setOverall] = useState("");

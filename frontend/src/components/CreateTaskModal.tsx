@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Icon from "./Icon";
 import FolderSelect from "./FolderSelect";
-import { api, ModelRow } from "@/lib/api";
+import { api, ModelRow, TaskRow } from "@/lib/api";
 
 const TYPE_ICONS: Record<string, string> = {
   detailed: "image", video: "video", ppv_sequence: "image",
@@ -42,18 +42,27 @@ function sectionsFor(type: string, isTemplate: boolean) {
 }
 
 export default function CreateTaskModal({
-  models, onClose, onCreated,
-}: { models: ModelRow[]; onClose: () => void; onCreated: () => void }) {
-  const [type, setType] = useState("detailed");
+  models, onClose, onCreated, editing,
+}: { models: ModelRow[]; onClose: () => void; onCreated: () => void; editing?: TaskRow }) {
+  const isEdit = !!editing;
+  const [type, setType] = useState(editing?.type || "detailed");
   const [form, setForm] = useState({
-    title: "", description: "", priority: "medium", due_date: "", status: "todo",
-    is_template: false,
-    manager_notes: "", extra_tips: "", captions: "",
+    title: editing?.title || "", description: editing?.description || "",
+    priority: editing?.priority || "medium", due_date: editing?.due_date || "",
+    status: editing?.status || "todo",
+    is_template: editing?.is_template ?? false,
+    manager_notes: editing?.manager_notes || "", extra_tips: editing?.extra_tips || "",
+    captions: editing?.captions || "",
   });
-  const [assignees, setAssignees] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
+  const [assignees, setAssignees] = useState<string[]>(editing?.assignees?.map((a) => a.id) || []);
+  const [tags, setTags] = useState<string[]>(editing?.tags || []);
   const [tagInput, setTagInput] = useState("");
-  const [data, setData] = useState<any>({ outfit: [""], location: "", media: [], teasing: "", parts: [], swipe: "", targetFolders: {} });
+  const [data, setData] = useState<any>(() => {
+    const base = { outfit: [""], location: "", media: [], teasing: "", parts: [], swipe: "", targetFolders: {} };
+    const d = { ...base, ...(editing?.data || {}) };
+    if (!Array.isArray(d.outfit) || d.outfit.length === 0) d.outfit = [""];
+    return d;
+  });
   const [active, setActive] = useState("core");
   const [openSec, setOpenSec] = useState<Record<string, boolean>>({ core: true, assignment: true, upload: true });
   const [modelQuery, setModelQuery] = useState("");
@@ -98,7 +107,12 @@ export default function CreateTaskModal({
   const submit = async () => {
     if (!form.title.trim()) { setErr("Title is required"); openAndScroll("core"); return; }
     setBusy(true); setErr(null);
-    try { await api.createTask({ ...form, type, tags, assignees, data }); onCreated(); }
+    try {
+      const payload = { ...form, type, tags, assignees, data };
+      if (isEdit) await api.updateTask(editing!.id, payload);
+      else await api.createTask(payload);
+      onCreated();
+    }
     catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -136,8 +150,8 @@ export default function CreateTaskModal({
     <div className="overlay">
       <div className="task-modal">
         <div className="tm-head">
-          <h3>Create New Task or Template</h3>
-          <p>Fill in the details to create a new task or template.</p>
+          <h3>{isEdit ? (form.is_template ? "Edit Template" : "Edit Task") : "Create New Task or Template"}</h3>
+          <p>{isEdit ? "Update the details and save your changes." : "Fill in the details to create a new task or template."}</p>
           <button className="x" onClick={onClose}><Icon name="x" /></button>
         </div>
         <div className="tm-body">
@@ -152,8 +166,8 @@ export default function CreateTaskModal({
             <button className="next-sec" onClick={nextSection}><Icon name="chevr" /> Next Section</button>
             <div className="tm-foot">
               <button className="btn brand" style={{ width: "100%", justifyContent: "center" }} onClick={submit} disabled={busy}>
-                {busy ? <Icon name="refresh" className="spin" /> : <Icon name="plus" />}
-                {form.is_template ? "Create Template" : "Create Task"}
+                {busy ? <Icon name="refresh" className="spin" /> : <Icon name={isEdit ? "check" : "plus"} />}
+                {isEdit ? "Save Changes" : form.is_template ? "Create Template" : "Create Task"}
               </button>
             </div>
           </div>

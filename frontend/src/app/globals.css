@@ -355,6 +355,35 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 .tpl-actions .btn.icon.assign svg{color:var(--brand)}
 .tpl-actions .btn.icon.assign:hover{background:var(--brand-soft);border-color:var(--brand-softln)}
 
+/* expand caret (rows + template groups) */
+.ta-caret{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:0;background:none;cursor:pointer;color:var(--muted2);padding:0;flex:0 0 auto}
+.ta-caret svg{width:15px;height:15px;transition:transform .15s ease}
+.ta-caret.open svg{transform:rotate(90deg)}
+.ta-caret.ghost{cursor:default}
+
+/* per-assignee status in task list */
+.ta-assigned{display:flex;align-items:center;gap:8px;background:none;border:0;cursor:pointer;padding:0;text-align:left}
+.tbl tr.row-open td{background:var(--brand-soft)}
+.tbl tr.row-open.row-attn td{background:#fffdf6}
+.st-counts{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ta-subrow td{padding:0 !important;background:#fafafa;border-top:0}
+.ta-people{display:flex;flex-direction:column;gap:0;padding:2px 0 6px}
+.ta-prow{display:flex;align-items:center;gap:10px;padding:8px 14px 8px 42px;border-top:1px dashed var(--line)}
+.ta-prow:first-child{border-top:0}
+.ta-prow .ta-pname{font-weight:550;font-size:13px;flex:1;min-width:0}
+
+/* organized template groups */
+.tpl-typechips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+.tchip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line3);background:#fff;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:550;cursor:pointer;color:#52525b}
+.tchip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tchip-n{font-size:10.5px;font-weight:700;opacity:.7}
+.tpl-group{margin-top:10px}
+.tpl-ghead{display:flex;align-items:center;gap:7px;width:100%;background:none;border:0;cursor:pointer;padding:7px 2px;color:#3f3f46;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.tpl-ghead .tpl-gname{flex:1;text-align:left}
+.tpl-ghead .tpl-gcount{font-size:11px;font-weight:700;color:#fff;background:var(--muted2);border-radius:999px;padding:1px 8px}
+.tpl-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.ttag{font-size:10.5px;font-weight:600;background:#f3f4f6;color:#586070;border:1px solid #e7e9ee;border-radius:6px;padding:1px 6px}
+
 /* assign-template modal bits */
 .assign-summary{background:#fafafb;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
 .assign-summary .as-name{font-weight:680;font-size:14px;margin-bottom:8px}
@@ -426,6 +455,11 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 .creator .page-head h1{color:#1c1020}
 .creator .page-head h1 svg{width:22px;height:22px;color:var(--pink)}
 .creator .page-head p{color:#9a8290}
+.cv-head-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cv-lang{display:inline-flex;gap:2px;background:var(--pink-soft);border:1px solid var(--pink-softln);border-radius:999px;padding:3px}
+.cv-lang button{display:inline-flex;align-items:center;gap:5px;border:0;background:none;cursor:pointer;font-size:12px;font-weight:760;color:var(--pink-tx);border-radius:999px;padding:6px 11px;line-height:1}
+.cv-lang button span{font-size:13px}
+.cv-lang button.on{background:var(--pink-grad);color:#fff;box-shadow:var(--pink-sh)}
 .cv-as{display:flex;align-items:center;gap:9px}
 .cv-as .sub{color:#b08aa0}
 .cv-as .inp{width:auto;min-width:150px;font-weight:650;border-radius:999px;border-color:var(--pink-softln);
@@ -433,6 +467,43 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 .cv-as .inp:focus{border-color:var(--pink);box-shadow:0 0 0 3px rgba(246,71,143,.16)}
 
 .cv-wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:13px}
+
+/* ── phone frame (device shell around the creator view) ── */
+.cv-phone{position:relative;max-width:438px;margin:6px auto 0;background:linear-gradient(180deg,#fff,#fff7fb);
+  border-radius:50px;padding:14px 14px 20px;
+  box-shadow:0 50px 90px -42px rgba(196,24,99,.5),0 0 0 2px #ffe2ef,0 0 0 12px #1d1118,0 0 0 13px #34232d}
+.cv-island{position:absolute;top:26px;left:50%;transform:translateX(-50%);width:96px;height:27px;background:#140b10;border-radius:999px;z-index:5}
+.cv-statusbar{display:flex;align-items:center;justify-content:space-between;padding:9px 30px 12px;color:#241420}
+.cv-time{font-size:14px;font-weight:760;letter-spacing:.02em}
+.cv-sys{display:flex;align-items:center;gap:7px}
+.cv-sig{display:inline-flex;align-items:flex-end;gap:2px;height:11px}
+.cv-sig i{width:3px;background:#241420;border-radius:1px}
+.cv-sig i:nth-child(1){height:4px}
+.cv-sig i:nth-child(2){height:6px}
+.cv-sig i:nth-child(3){height:8.5px}
+.cv-sig i:nth-child(4){height:11px}
+.cv-5g{font-size:11.5px;font-weight:760}
+.cv-batt{position:relative;width:23px;height:12px;border:1.4px solid #241420;border-radius:3.5px}
+.cv-batt::before{content:"";position:absolute;left:1.6px;top:1.6px;bottom:1.6px;width:64%;background:#241420;border-radius:1.5px}
+.cv-batt::after{content:"";position:absolute;right:-3px;top:3.5px;height:5px;width:2px;background:#241420;border-radius:0 2px 2px 0}
+.cv-screen{background:#fff8fb;border-radius:36px;padding:16px 14px 22px;max-height:78vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+.cv-screen::-webkit-scrollbar{width:0}
+.cv-screen .cv-wrap{max-width:100%;gap:12px}
+
+/* status accent stripe on task cards */
+.cv-task-card{position:relative;overflow:hidden}
+.cv-task-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pink-softln)}
+.cv-task-card.st-approved::before{background:#34c878}
+.cv-task-card.st-submitted::before{background:var(--pink)}
+.cv-task-card.st-changes_requested::before{background:#f0a92b}
+
+/* on real phones, drop the bezel — the device IS the frame */
+@media(max-width:560px){
+  .cv-phone{max-width:100%;margin:0;padding:0;border-radius:0;background:none;box-shadow:none}
+  .cv-island,.cv-statusbar{display:none}
+  .cv-screen{background:none;border-radius:0;padding:0;max-height:none;overflow:visible}
+}
 
 /* friendly pink hero greeting */
 .cv-greet{display:flex;align-items:center;gap:15px;margin-bottom:4px;padding:20px 22px;border-radius:22px;
