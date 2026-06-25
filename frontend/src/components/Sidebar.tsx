@@ -13,6 +13,7 @@ const NAV = [
   { href: "/models", icon: "star", label: "Manage Models" },
   { group: "Content" },
   { href: "/tasks", icon: "clip", label: "Model Tasks" },
+  { href: "/gallery", icon: "gallery", label: "Gallery" },
   { href: "/drive", icon: "folder", label: "Drive Manager" },
   { href: "/templates", icon: "folders", label: "Drive Templates", soon: true },
   { href: "/stats", icon: "pie", label: "Statistics" },

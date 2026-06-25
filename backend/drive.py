@@ -181,6 +181,72 @@ def list_children(folder_id: str) -> list[dict]:
     return _list(f"'{folder_id}' in parents and trashed = false")
 
 
+def _list_all(query: str, fields: str) -> list[dict]:
+    """Paginated list with custom fields (Shared-Drive aware)."""
+    service = _service()
+    items: list[dict] = []
+    token = None
+    drive_id = _drive_id()
+    while True:
+        params = dict(
+            q=query, fields=f"nextPageToken, files({fields})", pageSize=1000,
+            supportsAllDrives=True, includeItemsFromAllDrives=True, pageToken=token,
+        )
+        if drive_id:
+            params.update(corpora="drive", driveId=drive_id)
+        resp = service.files().list(**params).execute()
+        items.extend(resp.get("files", []))
+        token = resp.get("nextPageToken")
+        if not token:
+            break
+    return items
+
+
+def list_media() -> list[dict]:
+    """All image/video files across the CRM Drive, enriched with the owning
+    model name (derived from the folder path) and immediate folder name."""
+    folders = _list_all(f"mimeType = '{FOLDER_MIME}' and trashed = false", "id,name,parents")
+    fmap = {f["id"]: f for f in folders}
+
+    # locate the models/ folder so we can resolve each file's owning model
+    root = get_root()
+    models_id = None
+    if root:
+        for f in folders:
+            if f.get("name") == "models" and root["id"] in (f.get("parents") or []):
+                models_id = f["id"]; break
+
+    media = _list_all(
+        "(mimeType contains 'image/' or mimeType contains 'video/') and trashed = false",
+        "id,name,mimeType,size,modifiedTime,parents",
+    )
+    out = []
+    for m in media:
+        parents = m.get("parents") or []
+        parent = parents[0] if parents else None
+        folder_name = fmap.get(parent, {}).get("name") if parent else None
+        # walk up the folder chain to the model folder (child of models/)
+        model = None
+        node, guard = parent, 0
+        while node and guard < 25:
+            f = fmap.get(node)
+            if not f:
+                break
+            if models_id and models_id in (f.get("parents") or []):
+                model = f.get("name"); break
+            node = (f.get("parents") or [None])[0]
+            guard += 1
+        if model and "_" in model:
+            model = model.rsplit("_", 1)[0]
+        out.append({
+            "id": m["id"], "name": m["name"], "mimeType": m.get("mimeType"),
+            "size": m.get("size"), "modifiedTime": m.get("modifiedTime"),
+            "model": model, "folder": folder_name,
+        })
+    out.sort(key=lambda x: x.get("modifiedTime") or "", reverse=True)
+    return out
+
+
 # ───────────────────── CRM structure ─────────────────────
 def ensure_root_structure() -> dict:
     """Create (or find) the CRM root + its five top-level folders.

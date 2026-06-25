@@ -607,5 +607,16 @@ def todo_task_delete(task_id: str, user: dict = Depends(require_admin)):
     return {"deleted": True}
 
 
+# ───────────────────── Gallery (media library) ─────────────────────
+@app.get("/api/gallery")
+def gallery(user: dict = Depends(require_admin)):
+    if not drive.is_connected():
+        raise HTTPException(400, "Google Drive is not connected.")
+    try:
+        return drive.list_media()
+    except Exception as e:
+        raise HTTPException(400, f"Could not load gallery: {e}")
+
+
 # serve any other static assets
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

@@ -142,6 +142,9 @@ export const api = {
   kanbanMoveCard: (id: string, listId: string, position: number) =>
     req(`/api/kanban/cards/${id}/move`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ list_id: listId, position }) }),
 
+  // gallery (media library)
+  gallery: (): Promise<GalleryItem[]> => req("/api/gallery"),
+
   // todo (Office app)
   todoLists: (): Promise<TodoList[]> => req("/api/todo/lists"),
   todoCreateList: (title: string, description?: string, color?: string): Promise<TodoList> =>
@@ -191,6 +194,11 @@ export type KanbanCard = { id: string; list_id: string; title: string; descripti
 export type KanbanList = { id: string; title: string; position: number; cards: KanbanCard[] };
 export type KanbanBoard = { id: string; title: string; description?: string | null; created_at?: string; card_count?: number };
 export type KanbanBoardFull = KanbanBoard & { lists: KanbanList[] };
+
+export type GalleryItem = {
+  id: string; name: string; mimeType?: string; size?: string | null;
+  modifiedTime?: string; model?: string | null; folder?: string | null;
+};
 
 export type TodoStatus = "todo" | "in_progress" | "done";
 export type TodoPriority = "none" | "low" | "medium" | "high" | "urgent";
