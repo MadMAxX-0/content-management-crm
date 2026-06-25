@@ -1,4 +1,6 @@
 "use client";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Icon from "./Icon";
 
@@ -16,9 +18,13 @@ const APPS: App[] = [
 
 export default function OfficePanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const openApp = (a: App) => { if (a.href) { onClose(); router.push(a.href); } };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div className={`office-back ${open ? "show" : ""}`} onClick={onClose} />
       <aside className={`office-panel ${open ? "open" : ""}`} aria-hidden={!open}>
@@ -56,6 +62,7 @@ export default function OfficePanel({ open, onClose }: { open: boolean; onClose:
           ))}
         </div>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }
