@@ -6,6 +6,10 @@ import { slotsForTask, statusMeta, TYPE_ICON, Slot } from "@/lib/slots";
 import { useAuth } from "@/components/auth-context";
 import { useAppLang, LANGS, Lang, TFn, ST_KEY, TYPE_KEY } from "@/lib/appLang";
 
+// Language switcher + content translation are built but parked until the DeepL
+// key is configured. Flip this to true (and set DEEPL_API_KEY on Railway) to re-enable.
+const LANG_ENABLED = false;
+
 const isImg = (m?: string) => !!m && m.startsWith("image/");
 const typeLabel = (t: TFn, type?: string | null) => t(TYPE_KEY[type || ""] || "typeTask");
 const statusLabel = (t: TFn, s?: string) => t(ST_KEY[s || ""] || "stTodo");
@@ -72,7 +76,7 @@ export default function CreatorApp() {
   // Translate task content into the chosen language (cached server-side; each
   // task fetched once per language and reused). EN shows the original text.
   useEffect(() => {
-    if (lang === "en" || tasks.length === 0) return;
+    if (!LANG_ENABLED || lang === "en" || tasks.length === 0) return;
     const missing = tasks.filter((tk) => !trans[`${lang}:${tk.id}`]);
     if (missing.length === 0) return;
     let cancelled = false;
@@ -113,8 +117,8 @@ export default function CreatorApp() {
           <p>{t("headSub")}</p>
         </div>
         <div className="cv-head-tools">
-          <LangSwitch lang={lang} setLang={setLang} />
-          {translating && <span className="cv-translating"><Icon name="refresh" className="spin" /> {lang === "pt" ? "Traduzindo…" : lang === "es" ? "Traduciendo…" : "Translating…"}</span>}
+          {LANG_ENABLED && <LangSwitch lang={lang} setLang={setLang} />}
+          {LANG_ENABLED && translating && <span className="cv-translating"><Icon name="refresh" className="spin" /> {lang === "pt" ? "Traduzindo…" : lang === "es" ? "Traduciendo…" : "Translating…"}</span>}
           {!isCreator && (
             <div className="cv-as">
               <span className="sub">{t("viewingAs")}</span>
