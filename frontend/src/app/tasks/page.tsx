@@ -223,17 +223,17 @@ export default function TasksPage() {
                     </button>
                     {!isCol && g.items.map((t) => (
                       <div className="tpl-card" key={t.id}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="tnm">{t.title}</div>
-                          {t.tags && t.tags.length > 0 && (
-                            <div className="tpl-tags">{t.tags.slice(0, 4).map((tag) => <span className="ttag" key={tag}>{tag}</span>)}</div>
-                          )}
-                        </div>
-                        <span className={`badge b-prio-${t.priority}`}>{t.priority}</span>
-                        <div className="tpl-actions">
-                          <button className="btn icon sm" title="Edit template" onClick={() => setEdit(t)}><Icon name="edit" /></button>
-                          <button className="btn icon sm assign" title="Assign to models" onClick={() => setAssign(t)}><Icon name="send" /></button>
-                          <button className="btn icon sm danger" title="Delete template" onClick={() => del(t.id, t.title)}><Icon name="trash" /></button>
+                        <div className="tnm" title={t.title}>{t.title}</div>
+                        {t.tags && t.tags.length > 0 && (
+                          <div className="tpl-tags">{t.tags.slice(0, 4).map((tag) => <span className="ttag" key={tag}>{tag}</span>)}</div>
+                        )}
+                        <div className="tpl-foot">
+                          <span className={`badge b-prio-${t.priority}`}>{t.priority}</span>
+                          <div className="tpl-actions">
+                            <button className="btn icon sm" title="Edit template" onClick={() => setEdit(t)}><Icon name="edit" /></button>
+                            <button className="btn icon sm assign" title="Assign to models" onClick={() => setAssign(t)}><Icon name="send" /></button>
+                            <button className="btn icon sm danger" title="Delete template" onClick={() => del(t.id, t.title)}><Icon name="trash" /></button>
+                          </div>
                         </div>
                       </div>
                     ))}
