@@ -106,5 +106,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (me?.role === "creator" && !isCreatorPath(path)) return null;
   if (me?.role === "va" && !isVaPath(path)) return null;
 
+  // Creators get the standalone phone app — no admin sidebar/shell at all.
+  if (me?.role === "creator") return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+
   return <AuthContext.Provider value={value}><Shell>{children}</Shell></AuthContext.Provider>;
 }

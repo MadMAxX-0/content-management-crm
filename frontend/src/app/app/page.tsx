@@ -35,7 +35,7 @@ export default function CreatorApp() {
   const [loading, setLoading] = useState(false);
   const [trans, setTrans] = useState<Record<string, Partial<TaskRow>>>({}); // `${lang}:${taskId}` -> translated fields
   const [translating, setTranslating] = useState(false);
-  const { me } = useAuth();
+  const { me, signOut } = useAuth();
   const { lang, setLang, t } = useAppLang();
   const isCreator = me?.role === "creator";
 
@@ -109,6 +109,28 @@ export default function CreatorApp() {
   const open = openRaw ? viewTask(openRaw) : null;
   const shownTasks = tasks.map(viewTask);
 
+  const content = !open ? (
+    <TaskList tasks={shownTasks} loading={loading} model={model} onOpen={openTask} t={t} />
+  ) : (
+    <TaskDetail task={open} modelId={modelId} folders={folders} t={t} onBack={() => setOpenId(null)} onChanged={() => loadTasks(modelId)} />
+  );
+
+  // ── Real creators: full-screen standalone app (no sidebar, no website chrome) ──
+  if (isCreator) {
+    return (
+      <div className="capp creator">
+        <header className="capp-bar">
+          <div className="capp-brand"><span className="capp-logo">Y</span> Youtopia</div>
+          {LANG_ENABLED && <LangSwitch lang={lang} setLang={setLang} />}
+          {LANG_ENABLED && translating && <span className="cv-translating"><Icon name="refresh" className="spin" /> …</span>}
+          <button className="capp-out" onClick={signOut} aria-label="Sign out"><Icon name="logout" /></button>
+        </header>
+        <main className="capp-body">{content}</main>
+      </div>
+    );
+  }
+
+  // ── Admin/VA preview: framed as a phone inside the CRM ("Viewing as …") ──
   return (
     <div className="content creator">
       <div className="page-head">
@@ -117,17 +139,13 @@ export default function CreatorApp() {
           <p>{t("headSub")}</p>
         </div>
         <div className="cv-head-tools">
-          {LANG_ENABLED && <LangSwitch lang={lang} setLang={setLang} />}
-          {LANG_ENABLED && translating && <span className="cv-translating"><Icon name="refresh" className="spin" /> {lang === "pt" ? "Traduzindo…" : lang === "es" ? "Traduciendo…" : "Translating…"}</span>}
-          {!isCreator && (
-            <div className="cv-as">
-              <span className="sub">{t("viewingAs")}</span>
-              <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
-                {models.length === 0 && <option value="">No models</option>}
-                {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-            </div>
-          )}
+          <div className="cv-as">
+            <span className="sub">{t("viewingAs")}</span>
+            <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
+              {models.length === 0 && <option value="">No models</option>}
+              {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -141,13 +159,7 @@ export default function CreatorApp() {
             <span className="cv-batt" />
           </span>
         </div>
-        <div className="cv-screen">
-          {!open ? (
-            <TaskList tasks={shownTasks} loading={loading} model={model} onOpen={openTask} t={t} />
-          ) : (
-            <TaskDetail task={open} modelId={modelId} folders={folders} t={t} onBack={() => setOpenId(null)} onChanged={() => loadTasks(modelId)} />
-          )}
-        </div>
+        <div className="cv-screen">{content}</div>
       </div>
     </div>
   );

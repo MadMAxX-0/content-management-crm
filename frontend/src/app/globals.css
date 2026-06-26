@@ -470,6 +470,24 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 
 .cv-wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:13px}
 
+/* ── standalone creator app shell (no sidebar; fills the device) ── */
+.capp{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
+  background:radial-gradient(120% 60% at 50% 0%,#fff1f7 0%,#fff 60%)}
+.capp-bar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;
+  padding:calc(13px + env(safe-area-inset-top)) 18px 13px;
+  background:rgba(255,255,255,.82);backdrop-filter:saturate(1.5) blur(14px);
+  border-bottom:1px solid var(--pink-softln)}
+.capp-brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;color:#241420;letter-spacing:-.015em}
+.capp-logo{width:30px;height:30px;border-radius:9px;background:var(--pink-grad);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;box-shadow:var(--pink-sh)}
+.capp-out{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+  border-radius:11px;border:1px solid var(--pink-softln);background:#fff;color:var(--pink-tx);cursor:pointer}
+.capp-out:hover{background:var(--pink-soft)}
+.capp-out svg{width:18px;height:18px}
+.capp-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:18px 16px calc(30px + env(safe-area-inset-bottom))}
+.capp-body .cv-wrap{max-width:560px;margin:0 auto}
+
 /* ── phone frame (device shell around the creator view) ── */
 .cv-phone{position:relative;max-width:438px;margin:6px auto 0;background:linear-gradient(180deg,#fff,#fff7fb);
   border-radius:50px;padding:14px 14px 20px;
