@@ -364,7 +364,17 @@ export default function CreateTaskModal({
 
             {sections.includes("gallery") && sec("gallery", <>
               <div className="sd">Preview all media associated with this task in a swipeable gallery.</div>
-              <div className="connected-box">Media uploads come in the next pass — this gallery will preview them.</div>
+              <label className="fld-l">Task Gallery Media</label>
+              <div className="sub" style={{ margin: "-2px 0 10px" }}>Add images and videos that models can swipe through in the gallery view</div>
+              <div className="mini-btns split">
+                <button className="btn sm" type="button"><Icon name="gallery" /> From Gallery</button>
+                <button className="btn sm" type="button"><Icon name="upload" /> Upload Media</button>
+              </div>
+              <div className="dropzone lg">
+                <Icon name="gallery" />
+                <div className="dz-title">No gallery media added yet</div>
+                <div className="dz-sub">Add images and videos that models can swipe through</div>
+              </div>
             </>)}
 
             {sections.includes("swipe") && sec("swipe", <>

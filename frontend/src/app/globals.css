@@ -297,6 +297,10 @@ svg{flex:0 0 auto}
 .media-sub .sl svg{width:15px;height:15px;color:var(--muted)}
 .dropzone{border:1px dashed var(--line3);border-radius:10px;padding:22px;text-align:center;color:var(--muted2);font-size:12.5px;margin:9px 0;display:flex;flex-direction:column;align-items:center;gap:6px}
 .dropzone svg{width:26px;height:26px;color:#d4d4d8}
+.dropzone.lg{padding:34px 18px;gap:4px}
+.dropzone.lg svg{width:34px;height:34px;margin-bottom:3px}
+.dz-title{font-weight:600;color:#52525b;font-size:13.5px}
+.dz-sub{color:var(--muted2);font-size:12.5px}
 .refbox{margin-top:14px}
 .ref-l{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:2px}
 .mini-btns.split{margin-bottom:0}
