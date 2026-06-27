@@ -171,15 +171,30 @@ async def task_media_upload(file: UploadFile = File(...), user: dict = Depends(r
 
 
 @app.get("/api/task-media")
-def task_media_list(user: dict = Depends(require_tasks)):
-    """Previously uploaded task reference media — powers the 'From Gallery' picker."""
+def task_media_list(category: str = Query("", description="optional category filter"),
+                    user: dict = Depends(require_tasks)):
+    """The whole media library — powers the task 'From Gallery' picker. Shows every
+    image/video across the Drive (gallery uploads, task media, model content), so any
+    uploaded file can be reused as task reference media. Optional category filter."""
     _require_connection()
-    folder = drive.gallery_folder("Task Gallery")
+    try:
+        items = drive.list_media()
+    except Exception as e:
+        raise HTTPException(400, f"Could not load media: {e}")
+    if db.enabled():
+        mmap = db.media_map()
+        for it in items:
+            row = mmap.get(it["id"])
+            if row and row.get("category"):
+                it["category"] = row["category"]
     out = []
-    for i in drive.list_children(folder):
+    for i in items:
         m = i.get("mimeType") or ""
-        if m != drive.FOLDER_MIME and (m.startswith("image/") or m.startswith("video/")):
-            out.append(i)
+        if not (m.startswith("image/") or m.startswith("video/")):
+            continue
+        if category and i.get("category") != category:
+            continue
+        out.append(i)
     return out
 
 
