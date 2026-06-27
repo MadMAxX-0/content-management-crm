@@ -7,8 +7,9 @@ type View = "grid" | "list" | "masonry" | "table";
 const isImg = (m?: string) => !!m && m.startsWith("image/");
 const isVid = (m?: string) => !!m && m.startsWith("video/");
 const thumb = (id: string) => `${apiBase}/api/file/${id}/content`;
-const CATEGORIES = ["Profile", "Bottleneck", "ID", "Model Media (Image)", "Model Media (Video)", "Task Content (Image)", "Task Content (Video)", "Department", "Notes"];
-const UPLOAD_CATS = ["Profile", "Bottleneck", "ID", "Department", "Notes"];
+// Single source of truth — the filter and the upload modal use the same list.
+const CATEGORIES = ["Profile", "Bottleneck", "ID", "Model Media (Image)", "Model Media (Video)", "Task Content (Image)", "Task Content (Video)", "Task Gallery", "Department", "Notes"];
+const UPLOAD_CATS = CATEGORIES;
 
 export default function GalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
