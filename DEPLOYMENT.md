@@ -18,14 +18,36 @@ You'll need free accounts on: **GitHub, Vercel, Railway, Supabase, Google Cloud*
 
 ---
 
-## 1. Get the code
+## 1. Get the code onto your own GitHub
 
-Fork (or clone into a new repo) so you have your own copy:
+You need the code in a GitHub repo **you own**, because Vercel and Railway deploy
+straight from GitHub. Pick whichever path fits.
 
-- On GitHub, **Fork** this repository into your account, **or**
-- `git clone` it and push to a new repo you own.
+### Path A — Fork (easiest, if you can see the repo)
 
-Both Vercel and Railway deploy straight from your GitHub repo.
+1. Create a free account at [github.com](https://github.com) if you don't have one.
+2. Ask the owner to make the repo **public**, or to add you as a **collaborator**
+   (repo → **Settings → Collaborators → Add people**).
+3. Open the repo page → click **Fork** (top-right) → **Create fork**.
+   You now own a copy at `github.com/YOUR-NAME/content-management-crm`.
+
+### Path B — Copy via ZIP (works even if the repo stays private)
+
+1. **Owner:** open the repo → green **Code** button → **Download ZIP**, send it to you.
+2. **You:** unzip it, then create a **new empty repo** on your GitHub (no README/.gitignore).
+3. In a terminal inside the unzipped folder:
+   ```bash
+   rm -rf .git
+   git init
+   git add -A
+   git commit -m "initial"
+   git branch -M main
+   git remote add origin https://github.com/YOUR-NAME/YOUR-REPO.git
+   git push -u origin main
+   ```
+
+Either way, you end up with the full project in **your** GitHub account, with two
+folders that get deployed separately: `frontend/` (to Vercel) and `backend/` (to Railway).
 
 ---
 
@@ -43,17 +65,62 @@ Both Vercel and Railway deploy straight from your GitHub repo.
 
 ---
 
-## 3. Google Cloud (Drive storage)
+## 3. Google Drive setup (file storage) — step by step
 
-1. Create a project at [console.cloud.google.com](https://console.cloud.google.com).
-2. **APIs & Services → Library** → enable **Google Drive API**.
-3. **APIs & Services → OAuth consent screen** → set it up (External is fine; add your
-   agency Google account as a test user).
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**:
-   - **Authorized redirect URI:** `https://YOUR-BACKEND-URL/auth/google/callback`
-     (you'll get the backend URL from Railway in step 4 — come back and fill this in).
-   - Copy **Client ID** → `GOOGLE_CLIENT_ID`, **Client secret** → `GOOGLE_CLIENT_SECRET`.
-5. (Optional) If you use a **Shared Drive**, copy its ID → `SHARED_DRIVE_ID`. Otherwise leave it blank and files go in the connected account's My Drive.
+All uploaded content lives in **one Google account's Drive** — your "agency" account.
+The app connects to it via Google OAuth. Do this carefully; it's the fiddliest part.
+
+> **Chicken-and-egg note:** the OAuth setup needs your backend's public URL (for the
+> redirect URI), but you don't have that until step 4 (Railway). That's fine — you can
+> **edit the redirect URIs in Google Cloud anytime**. Easiest order: do 3a–3e now using a
+> placeholder, deploy the backend (step 4), then come back and paste the real Railway URL.
+
+**3a. Choose the agency Google account.** Decide which Google account will hold all the
+content (ideally a dedicated agency Gmail, not a personal one). You'll *connect* this
+account's Drive inside the app later (step 6).
+
+**3b. Create a Google Cloud project.**
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) (sign in with any Google account).
+2. Top bar → project dropdown → **New Project** → name it (e.g. `MyCRM`) → **Create**.
+3. Make sure the new project is selected in the top bar.
+
+**3c. Enable the Drive API.**
+1. Left menu → **APIs & Services → Library**.
+2. Search **Google Drive API** → open it → **Enable**.
+
+**3d. Configure the OAuth consent screen.**
+1. **APIs & Services → OAuth consent screen**.
+2. User type: **External** → **Create**.
+3. Fill **App name**, **User support email**, **Developer contact email** → **Save and Continue**.
+4. **Scopes:** skip (click **Save and Continue**) — the app requests what it needs.
+5. **Test users:** click **Add Users** and add the **agency Google account** email from 3a → **Save and Continue**.
+6. Leave it in **Testing** mode (only your test users can connect — that's fine). You can
+   later **Publish app** if you want any Google account to be able to connect.
+
+**3e. Create the OAuth client ID.**
+1. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
+2. Application type: **Web application**. Name it (e.g. `CRM backend`).
+3. Under **Authorized redirect URIs → + Add URI**, add (you can add the real one after step 4):
+   - `https://YOUR-BACKEND.up.railway.app/auth/google/callback` ← production (paste real URL after Railway)
+   - `http://localhost:8000/auth/google/callback` ← only if you'll run it locally
+4. **Create.** A popup shows **Client ID** and **Client secret** — copy both:
+   - Client ID → `GOOGLE_CLIENT_ID`
+   - Client secret → `GOOGLE_CLIENT_SECRET`
+5. Whatever exact URL you put as the redirect URI must **also** be your `GOOGLE_REDIRECT_URI`
+   env var on Railway — they have to match character-for-character.
+
+**3f. (Optional) Use a Shared Drive.** If content should live in a Google **Shared Drive**
+(Team Drive) instead of My Drive: open it in Drive, copy the ID from the URL
+`drive.google.com/drive/folders/<THIS_ID>` → set `SHARED_DRIVE_ID`. Make sure the agency
+account is a member. Otherwise leave `SHARED_DRIVE_ID` blank (files go in My Drive).
+
+**3g. Connect Drive in the app (after deploying — see step 6).** Once the app is live and
+you're logged in as admin, use **Connect Google Drive** → Google's consent screen opens →
+sign in with the **agency Google account** (3a) → approve. The app creates a
+`<COMPANY_NAME>_crm/` folder in that Drive and stores everything there from then on.
+
+> If connecting fails with `redirect_uri_mismatch`, the URL in `GOOGLE_REDIRECT_URI` and the
+> one in Google Cloud → Credentials don't match exactly (check http vs https, trailing slash).
 
 ---
 
