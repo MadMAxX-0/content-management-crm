@@ -158,6 +158,31 @@ def folder_contents(folder_id: str, user: dict = Depends(current_user)):
     return {"items": drive.list_children(folder_id)}
 
 
+@app.post("/api/task-media/upload")
+async def task_media_upload(file: UploadFile = File(...), user: dict = Depends(require_tasks)):
+    """Upload a reference image/video for a task (managers + VAs)."""
+    _require_connection()
+    folder = drive.gallery_folder("Task Gallery")
+    content = await file.read()
+    res = drive.upload_file(folder, file.filename, content, file.content_type)
+    if db.enabled():
+        db.set_media(res["id"], "Task Gallery", user.get("email"))
+    return res
+
+
+@app.get("/api/task-media")
+def task_media_list(user: dict = Depends(require_tasks)):
+    """Previously uploaded task reference media — powers the 'From Gallery' picker."""
+    _require_connection()
+    folder = drive.gallery_folder("Task Gallery")
+    out = []
+    for i in drive.list_children(folder):
+        m = i.get("mimeType") or ""
+        if m != drive.FOLDER_MIME and (m.startswith("image/") or m.startswith("video/")):
+            out.append(i)
+    return out
+
+
 @app.post("/api/model/folder")
 def model_folder(name: str = Query(...), user_id: str = Query(...), user: dict = Depends(require_admin)):
     """Create models/<name_userID>/Root folder/ — the registration trigger."""

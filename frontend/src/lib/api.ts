@@ -127,6 +127,12 @@ export const api = {
     fd.append("file", file);
     return req(`/api/folder/${folderId}/upload`, { method: "POST", body: fd });
   },
+  taskMediaUpload: (file: File): Promise<DriveItem> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return req("/api/task-media/upload", { method: "POST", body: fd });
+  },
+  taskMediaList: (): Promise<DriveItem[]> => req("/api/task-media"),
 
   // statistics
   stats: (): Promise<Stats> => req("/api/stats"),

@@ -240,6 +240,8 @@ function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
         <Brief icon="shirt" title={t("briefOutfit")} body={d.outfit.filter((o: string) => o?.trim()).join("\n\n")} />}
       {d.location && <Brief icon="camera" title={t("briefLocation")} body={d.location} />}
 
+      <RefStrip data={d} />
+
       <div className="cv-slots-h">{t("uploadHeader")}</div>
       {!task.upload_folder_id ? (
         <div className="empty-row">{t("noFolder")}</div>
@@ -260,6 +262,28 @@ function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
           {st === "submitted" ? t("submittedWait") : st === "changes_requested" ? t("resubmit") : t("submit")}
         </button>
       )}
+    </div>
+  );
+}
+
+// Reference media (example shots the manager attached across the task) shown to the creator.
+function RefStrip({ data }: { data: any }) {
+  const refs = Object.values((data?.media_refs || {}) as Record<string, any[]>).flat().filter(Boolean);
+  const seen = new Set<string>();
+  const uniq = refs.filter((m: any) => m?.id && !seen.has(m.id) && (seen.add(m.id), true));
+  if (uniq.length === 0) return null;
+  return (
+    <div className="cv-brief">
+      <div className="cb-h"><Icon name="gallery" /> References</div>
+      <div className="cv-refs">
+        {uniq.map((m: any) => (
+          <a className="cv-ref" key={m.id} href={`${apiBase}/api/file/${m.id}/content`} target="_blank" rel="noreferrer" title={m.name}>
+            {isImg(m.mimeType)
+              ? <img src={`${apiBase}/api/file/${m.id}/content`} alt={m.name || ""} loading="lazy" />
+              : <span className="cv-ref-file"><Icon name={m.mimeType?.startsWith("video/") ? "video" : "clip"} /></span>}
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

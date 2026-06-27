@@ -1,8 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "./Icon";
 import FolderSelect from "./FolderSelect";
-import { api, ModelRow, TaskRow } from "@/lib/api";
+import { api, apiBase, ModelRow, TaskRow, DriveItem } from "@/lib/api";
+
+type MediaRef = { id: string; name?: string; mimeType?: string };
+const isImgMime = (m?: string) => !!m && m.startsWith("image/");
 
 const TYPE_ICONS: Record<string, string> = {
   detailed: "image", video: "video", ppv_sequence: "image",
@@ -58,7 +61,7 @@ export default function CreateTaskModal({
   const [tags, setTags] = useState<string[]>(editing?.tags || []);
   const [tagInput, setTagInput] = useState("");
   const [data, setData] = useState<any>(() => {
-    const base = { outfit: [""], location: "", media: [], teasing: "", parts: [], swipe: "", targetFolders: {} };
+    const base = { outfit: [""], location: "", media: [], teasing: "", parts: [], swipe: "", targetFolders: {}, media_refs: {} };
     const d = { ...base, ...(editing?.data || {}) };
     if (!Array.isArray(d.outfit) || d.outfit.length === 0) d.outfit = [""];
     return d;
@@ -87,6 +90,7 @@ export default function CreateTaskModal({
       case "media": return data.media?.length ? 100 : 0;
       case "teasing": return (data.teasing?.trim() || data.parts?.length) ? 100 : 0;
       case "swipe": return data.swipe ? 100 : 0;
+      case "gallery": return (data.media_refs?.gallery?.length) ? 100 : 0;
       default: return 0;
     }
   };
@@ -119,16 +123,18 @@ export default function CreateTaskModal({
   const typeDef = TASK_TYPES.find((t) => t.key === type);
   const shownModels = models.filter((m) => m.name.toLowerCase().includes(modelQuery.toLowerCase()));
 
+  // Reference media is keyed by a stable slot string under data.media_refs so the
+  // creator can see the example shots the manager attached for each part of the task.
+  const setRefs = (slot: string, arr: MediaRef[]) =>
+    setData((s: any) => ({ ...s, media_refs: { ...(s.media_refs || {}), [slot]: arr } }));
+  const getRefs = (slot: string): MediaRef[] => data.media_refs?.[slot] || [];
+
   // Reusable "Reference Images" block: description lives in the parent; this is the
   // example-media attachment (From Gallery / Upload New) the manager adds to guide the shoot.
-  const refBlock = (emptyText: string) => (
+  const refBlock = (slot: string, emptyText: string) => (
     <div className="refbox">
       <div className="ref-l">Reference Images</div>
-      <div className="dropzone"><Icon name="image" /> {emptyText}</div>
-      <div className="mini-btns split">
-        <button className="btn sm" type="button"><Icon name="gallery" /> From Gallery</button>
-        <button className="btn sm" type="button"><Icon name="upload" /> Upload New</button>
-      </div>
+      <MediaBox value={getRefs(slot)} onChange={(a) => setRefs(slot, a)} empty={emptyText} />
     </div>
   );
 
@@ -285,7 +291,7 @@ export default function CreateTaskModal({
                   <label className="fld-l">Outfit Option {i + 1}</label>
                   <textarea className="inp" value={o} placeholder="e.g., 'A stylish black dress with high heels…'"
                     onChange={(e) => setD("outfit", data.outfit.map((x: string, j: number) => (j === i ? e.target.value : x)))} />
-                  {refBlock("No outfit media added yet")}
+                  {refBlock(`outfit_${i}`, "No outfit media added yet")}
                 </div>
               ))}
               <button className="btn sm" onClick={() => setD("outfit", [...data.outfit, ""])}><Icon name="plus" /> Add another outfit</button>
@@ -295,7 +301,7 @@ export default function CreateTaskModal({
               <div className="sd">Provide details about where the content should be created.</div>
               <label className="fld-l">Location Details</label>
               <textarea className="inp" value={data.location} onChange={(e) => setD("location", e.target.value)} placeholder="e.g., 'A modern apartment with good natural light…'" />
-              {refBlock("No location media added yet")}
+              {refBlock("location", "No location media added yet")}
             </>)}
 
             {sections.includes("media") && sec("media", <>
@@ -307,29 +313,19 @@ export default function CreateTaskModal({
                   <div className="media-card" key={i}>
                     <button className="rm" onClick={() => setD("media", data.media.filter((_: any, j: number) => j !== i))}><Icon name="x" /></button>
                     <div className="mc-title">Media {i + 1}</div>
-                    <div className="media-top">
-                      <div className="media-thumb">No media</div>
-                      <div className="media-actions">
-                        <div className="mini-btns">
-                          <button className="btn sm"><Icon name="upload" /> Upload</button>
-                          <button className="btn sm"><Icon name="gallery" /> Gallery</button>
-                        </div>
-                        <label className="fld-l">Description for this media</label>
-                        <textarea className="inp" value={md.description || ""} placeholder="Describe what this specific photo or video should contain…"
-                          onChange={(e) => upd("description", e.target.value)} />
-                      </div>
-                    </div>
+                    <label className="fld-l">Description for this media</label>
+                    <textarea className="inp" value={md.description || ""} placeholder="Describe what this specific photo or video should contain…"
+                      onChange={(e) => upd("description", e.target.value)} />
+                    <MediaBox value={getRefs(`media_${i}_main`)} onChange={(a) => setRefs(`media_${i}_main`, a)} empty="No reference media added yet" />
                     <div className="media-sub">
                       <div className="sl"><Icon name="shirt" /> Outfit Suggestions</div>
                       <textarea className="inp" value={md.outfit || ""} placeholder="Outfit suggestion 1…" onChange={(e) => upd("outfit", e.target.value)} />
-                      <div className="dropzone"><Icon name="image" /> No outfit media added yet</div>
-                      <div className="mini-btns"><button className="btn sm"><Icon name="gallery" /> Gallery</button><button className="btn sm"><Icon name="upload" /> Upload</button></div>
+                      <MediaBox value={getRefs(`media_${i}_outfit`)} onChange={(a) => setRefs(`media_${i}_outfit`, a)} empty="No outfit media added yet" />
                     </div>
                     <div className="media-sub">
                       <div className="sl"><Icon name="camera" /> Shooting Location</div>
                       <textarea className="inp" value={md.location || ""} placeholder="Location details for this photo…" onChange={(e) => upd("location", e.target.value)} />
-                      <div className="dropzone"><Icon name="image" /> No location media added yet</div>
-                      <div className="mini-btns"><button className="btn sm"><Icon name="gallery" /> Gallery</button><button className="btn sm"><Icon name="upload" /> Upload</button></div>
+                      <MediaBox value={getRefs(`media_${i}_loc`)} onChange={(a) => setRefs(`media_${i}_loc`, a)} empty="No location media added yet" />
                     </div>
                   </div>
                 );
@@ -344,7 +340,7 @@ export default function CreateTaskModal({
                 <label className="fld-l">Teasing</label>
                 <textarea className="inp" value={data.teasing} placeholder="Describe the teasing set (free teasers)…"
                   onChange={(e) => setD("teasing", e.target.value)} />
-                {refBlock("No teasing media added yet")}
+                {refBlock("teasing", "No teasing media added yet")}
               </div>
 
               {data.parts.map((p: any, i: number) => (
@@ -353,7 +349,7 @@ export default function CreateTaskModal({
                   <label className="fld-l">Part {i + 1}</label>
                   <textarea className="inp" value={p.desc || ""} placeholder={`Describe part ${i + 1}…`}
                     onChange={(e) => setD("parts", data.parts.map((x: any, j: number) => (j === i ? { ...x, desc: e.target.value } : x)))} />
-                  {refBlock("No media added yet")}
+                  {refBlock(`part_${i}`, "No media added yet")}
                 </div>
               ))}
 
@@ -366,22 +362,14 @@ export default function CreateTaskModal({
               <div className="sd">Preview all media associated with this task in a swipeable gallery.</div>
               <label className="fld-l">Task Gallery Media</label>
               <div className="sub" style={{ margin: "-2px 0 10px" }}>Add images and videos that models can swipe through in the gallery view</div>
-              <div className="mini-btns split">
-                <button className="btn sm" type="button"><Icon name="gallery" /> From Gallery</button>
-                <button className="btn sm" type="button"><Icon name="upload" /> Upload Media</button>
-              </div>
-              <div className="dropzone lg">
-                <Icon name="gallery" />
-                <div className="dz-title">No gallery media added yet</div>
-                <div className="dz-sub">Add images and videos that models can swipe through</div>
-              </div>
+              <MediaBox big value={getRefs("gallery")} onChange={(a) => setRefs("gallery", a)} empty="" />
             </>)}
 
             {sections.includes("swipe") && sec("swipe", <>
               <div className="sd">Upload the images for the model to swipe through. Describe the set and attach reference shots.</div>
               <label className="fld-l">Swipe Set</label>
               <textarea className="inp" value={data.swipe} onChange={(e) => setD("swipe", e.target.value)} placeholder="Describe the swipe set…" />
-              {refBlock("No swipe images added yet")}
+              {refBlock("swipe", "No swipe images added yet")}
             </>)}
 
             {sec("tips", <>
@@ -394,6 +382,125 @@ export default function CreateTaskModal({
               <textarea className="inp" value={form.captions} onChange={(e) => set("captions", e.target.value)} placeholder="Caption ideas…" />
             </>)}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Thumbnail of one reference media item (image preview or a video tile).
+function MediaThumb({ m }: { m: MediaRef }) {
+  return isImgMime(m.mimeType)
+    ? <img src={`${apiBase}/api/file/${m.id}/content`} alt={m.name || ""} />
+    : <span className="rt-file"><Icon name={m.mimeType?.startsWith("video/") ? "video" : "clip"} /></span>;
+}
+
+// Reusable reference-media uploader: Upload (to Drive) + From Gallery picker +
+// thumbnail strip with per-item remove. `big` renders the Task-Gallery style.
+function MediaBox({ value, onChange, empty, big }: {
+  value: MediaRef[]; onChange: (a: MediaRef[]) => void; empty: string; big?: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const items = value || [];
+
+  const add = (more: MediaRef[]) => {
+    const seen = new Set(items.map((m) => m.id));
+    onChange([...items, ...more.filter((m) => !seen.has(m.id))]);
+  };
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setBusy(true); setErr(null);
+    try {
+      const added: MediaRef[] = [];
+      for (const f of Array.from(files)) {
+        const r = await api.taskMediaUpload(f);
+        added.push({ id: r.id, name: r.name, mimeType: r.mimeType });
+      }
+      add(added);
+    } catch (e: any) {
+      setErr(e?.message?.includes("403") ? "Not allowed — sign out and back in." : "Upload failed. Try again.");
+    } finally { setBusy(false); }
+  };
+  const remove = (id: string) => onChange(items.filter((m) => m.id !== id));
+
+  return (
+    <div className="mediabox">
+      <div className="mini-btns split">
+        <button className="btn sm" type="button" onClick={() => setPick(true)}><Icon name="gallery" /> From Gallery</button>
+        <label className={`btn sm ${busy ? "is-busy" : ""}`} style={{ cursor: busy ? "wait" : "pointer" }}>
+          <input type="file" hidden multiple accept="image/*,video/*" disabled={busy}
+            onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
+          {busy ? <><Icon name="refresh" className="spin" /> Uploading…</> : <><Icon name="upload" /> {big ? "Upload Media" : "Upload New"}</>}
+        </label>
+      </div>
+
+      {err && <div className="sub" style={{ color: "#c0392b", marginTop: 6 }}>{err}</div>}
+
+      {items.length > 0 ? (
+        <div className="ref-thumbs">
+          {items.map((m) => (
+            <div className="ref-thumb" key={m.id}>
+              <a href={`${apiBase}/api/file/${m.id}/content`} target="_blank" rel="noreferrer" title={m.name}><MediaThumb m={m} /></a>
+              <button className="rt-x" type="button" onClick={() => remove(m.id)} aria-label="Remove"><Icon name="x" /></button>
+            </div>
+          ))}
+        </div>
+      ) : big ? (
+        <div className="dropzone lg">
+          <Icon name="gallery" />
+          <div className="dz-title">No gallery media added yet</div>
+          <div className="dz-sub">Add images and videos that models can swipe through</div>
+        </div>
+      ) : (
+        <div className="dropzone"><Icon name="image" /> {empty}</div>
+      )}
+
+      {pick && <GalleryPick existing={items} onClose={() => setPick(false)} onPick={(sel) => { add(sel); setPick(false); }} />}
+    </div>
+  );
+}
+
+// Picker over previously uploaded task media (GET /api/task-media).
+function GalleryPick({ existing, onClose, onPick }: {
+  existing: MediaRef[]; onClose: () => void; onPick: (sel: MediaRef[]) => void;
+}) {
+  const [items, setItems] = useState<DriveItem[] | null>(null);
+  const [sel, setSel] = useState<Record<string, MediaRef>>({});
+  useEffect(() => { api.taskMediaList().then(setItems).catch(() => setItems([])); }, []);
+  const have = new Set(existing.map((m) => m.id));
+  const toggle = (m: DriveItem) => setSel((s) => {
+    const n = { ...s };
+    if (n[m.id]) delete n[m.id]; else n[m.id] = { id: m.id, name: m.name, mimeType: m.mimeType };
+    return n;
+  });
+  const count = Object.keys(sel).length;
+
+  return (
+    <div className="overlay" style={{ zIndex: 60 }} onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ marginTop: 0 }}><Icon name="gallery" /> Pick from Gallery</h3>
+        <p className="sub" style={{ margin: "2px 0 12px" }}>Reuse media you've uploaded for other tasks.</p>
+        {items === null ? <div className="empty"><Icon name="refresh" className="spin" /> Loading…</div>
+          : items.length === 0 ? <div className="empty">Nothing here yet — use “Upload” to add media first.</div>
+          : (
+            <div className="gp-grid">
+              {items.map((m) => {
+                const on = !!sel[m.id]; const used = have.has(m.id);
+                return (
+                  <button key={m.id} type="button" className={`gp-cell ${on ? "on" : ""} ${used ? "used" : ""}`}
+                    onClick={() => !used && toggle(m)} title={used ? "Already added" : m.name}>
+                    <MediaThumb m={{ id: m.id, name: m.name, mimeType: m.mimeType }} />
+                    {(on || used) && <span className="gp-ck"><Icon name="check" /></span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        <div className="actions" style={{ marginTop: 14 }}>
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button className="btn brand" onClick={() => onPick(Object.values(sel))} disabled={!count}>Add{count ? ` ${count}` : ""}</button>
         </div>
       </div>
     </div>
