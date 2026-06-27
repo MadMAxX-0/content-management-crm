@@ -666,7 +666,8 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 /* happy pink upload button */
 .upload-tile{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;cursor:pointer;
   border:0;border-radius:15px;padding:15px;font-size:14px;font-weight:700;color:#fff;
-  background:var(--pink-grad);box-shadow:var(--pink-sh);transition:filter .15s,transform .06s}
+  background:var(--pink-grad, linear-gradient(180deg,#6a6ae0,var(--brand)));
+  box-shadow:var(--pink-sh, 0 12px 28px -14px rgba(91,91,214,.5));transition:filter .15s,transform .06s}
 .upload-tile:hover{filter:brightness(1.04)}
 .upload-tile:active{transform:translateY(1px)}
 .upload-tile svg{width:18px;height:18px}
