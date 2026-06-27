@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Icon from "@/components/Icon";
 import { api, ModelRow, TaskRow, DriveItem, FOLDER_MIME, apiBase, fmtDate } from "@/lib/api";
-import { slotsForTask, statusMeta, TYPE_ICON, Slot } from "@/lib/slots";
+import { slotsForTask, statusMeta, TYPE_ICON, Slot, contentSetLayout } from "@/lib/slots";
 import { useAuth } from "@/components/auth-context";
 import { useAppLang, LANGS, Lang, TFn, ST_KEY, TYPE_KEY } from "@/lib/appLang";
 
@@ -243,7 +243,9 @@ function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
       <RefStrip data={d} />
 
       <div className="cv-slots-h">{t("uploadHeader")}</div>
-      {!task.upload_folder_id ? (
+      {task.type === "content_set" ? (
+        <ContentSetView task={task} folders={folders} review={review} locked={locked} t={t} />
+      ) : !task.upload_folder_id ? (
         <div className="empty-row">{t("noFolder")}</div>
       ) : slots.length === 0 ? (
         <UploadSlot folderId={task.upload_folder_id} parentId={task.upload_folder_id} slot={{ label: task.title, folderName: "" }} review={review._overall} locked={locked} t={t} />
@@ -262,6 +264,52 @@ function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
           {st === "submitted" ? t("submittedWait") : st === "changes_requested" ? t("resubmit") : t("submit")}
         </button>
       )}
+    </div>
+  );
+}
+
+// Content Set: set switcher → sections → group cards (references + an upload slot each).
+function ContentSetView({ task, folders, review, locked, t }: {
+  task: TaskRow; folders: Record<string, string>; review: any; locked?: boolean; t: TFn;
+}) {
+  const { sets, setCount, note } = contentSetLayout(task);
+  const [active, setActive] = useState(1);
+  const cur = sets.find((s) => s.setNo === active) || sets[0];
+  if (!task.upload_folder_id) return <div className="empty-row">{t("noFolder")}</div>;
+  if (!cur) return <div className="empty-row">No sets defined yet.</div>;
+  return (
+    <div>
+      {note && <div className="cs-setnote"><Icon name="info" /> {note}</div>}
+      {setCount > 1 && (
+        <div className="set-tabs">
+          {sets.map((s) => (
+            <button key={s.setNo} className={s.setNo === active ? "on" : ""} onClick={() => setActive(s.setNo)}>Set {s.setNo}</button>
+          ))}
+        </div>
+      )}
+      {cur.sections.map((sec, si) => (
+        <div className="cs-sec" key={si}>
+          <div className="cs-sec-h"><span>{sec.title}</span><span className="cs-target">{sec.kind === "clip" ? "🎬" : "📷"} {sec.target}</span></div>
+          {sec.groups.length === 0
+            ? <div className="sub" style={{ padding: "2px 2px 6px" }}>Nothing here yet.</div>
+            : sec.groups.map((g, gi) => (
+              <div className="cs-group" key={gi}>
+                <div className="cs-group-h"><b>{g.title || "Untitled"}</b><span className="badge b-soft">{g.count} {g.kind === "clip" ? "clip" : "pcs"}</span></div>
+                {g.ref_link && <a className="cs-watch" href={g.ref_link} target="_blank" rel="noreferrer"><Icon name="video" /> Watch reference</a>}
+                {g.refs?.length > 0 && (
+                  <div className="cv-refs">
+                    {g.refs.map((m: any) => (
+                      <a className="cv-ref" key={m.id} href={`${apiBase}/api/file/${m.id}/content`} target="_blank" rel="noreferrer" title={m.name}>
+                        {isImg(m.mimeType) ? <img src={`${apiBase}/api/file/${m.id}/content`} alt={m.name || ""} loading="lazy" /> : <span className="cv-ref-file"><Icon name={m.mimeType?.startsWith("video/") ? "video" : "clip"} /></span>}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <UploadSlot folderId={folders[g.folderName]} parentId={task.upload_folder_id!} slot={{ label: g.title || "Group", folderName: g.folderName }} review={review[g.folderName]} locked={locked} t={t} />
+              </div>
+            ))}
+        </div>
+      ))}
     </div>
   );
 }

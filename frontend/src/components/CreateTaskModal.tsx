@@ -9,10 +9,11 @@ const isImgMime = (m?: string) => !!m && m.startsWith("image/");
 
 const TYPE_ICONS: Record<string, string> = {
   detailed: "image", video: "video", ppv_sequence: "image",
-  ppv_long: "video", images_videos: "image", swipe: "heart",
+  ppv_long: "video", images_videos: "image", swipe: "heart", content_set: "gallery",
 };
 
 const TASK_TYPES = [
+  { key: "content_set", label: "Content Set - Sectioned shoot brief", hint: "Sets of pictures & clips, grouped with reference examples", extras: ["setbuilder"] },
   { key: "detailed", label: "Detailed - Per-Media Instructions", hint: "Detailed per-media instructions", extras: ["media"] },
   { key: "video", label: "Video - Video Content Only", hint: "Video content for TikTok, Instagram Reels", extras: ["outfit", "location", "gallery"] },
   { key: "ppv_sequence", label: "PPV Sequence", hint: "Teasing base + up to 10 PPV parts", extras: ["teasing", "outfit", "location"] },
@@ -20,6 +21,13 @@ const TASK_TYPES = [
   { key: "images_videos", label: "Media Gallery - Images & Videos", hint: "Multiple images and videos for social media content", extras: ["outfit", "location", "gallery"] },
   { key: "swipe", label: "Swipe - Multi Photos", hint: "Multiple photos to swipe", extras: ["swipe"] },
 ];
+
+// Default sections for a new Content Set (manager fills in the groups).
+const DEFAULT_SECTIONS = () => ([
+  { title: "Non-Nude Pictures", kind: "photo", target: 12, groups: [] },
+  { title: "Nude Pictures", kind: "photo", target: 12, groups: [] },
+  { title: "Short Clips", kind: "clip", target: 9, groups: [] },
+]);
 
 const SECTION_META: Record<string, { label: string; icon: string }> = {
   core: { label: "Core Information", icon: "doc" },
@@ -32,6 +40,7 @@ const SECTION_META: Record<string, { label: string; icon: string }> = {
   location: { label: "Shooting Location", icon: "camera" },
   gallery: { label: "Task Gallery", icon: "image" },
   swipe: { label: "Images to Swipe", icon: "image" },
+  setbuilder: { label: "Set Structure", icon: "gallery" },
   tips: { label: "Extra Tips", icon: "bulb" },
   captions: { label: "Captions", icon: "clip" },
 };
@@ -77,6 +86,25 @@ export default function CreateTaskModal({
   const set = (k: string, v: any) => setForm((s) => ({ ...s, [k]: v }));
   const setD = (k: string, v: any) => setData((s: any) => ({ ...s, [k]: v }));
 
+  // Seed the Content Set structure the first time that type is chosen.
+  useEffect(() => {
+    if (type === "content_set" && !data.sections) {
+      setData((s: any) => ({ ...s, sets: s.sets || 1, set_note: s.set_note || "", sections: DEFAULT_SECTIONS() }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
+  // Content Set mutation helpers (all live under data.sections / data.sets).
+  const setsCount = Math.max(1, Number(data.sets) || 1);
+  const setSets = (n: number) => setD("sets", Math.max(1, n));
+  const editSections = (fn: (secs: any[]) => any[]) => setData((s: any) => ({ ...s, sections: fn(s.sections || []) }));
+  const updSection = (si: number, patch: any) => editSections((secs) => secs.map((x, i) => (i === si ? { ...x, ...patch } : x)));
+  const rmSection = (si: number) => editSections((secs) => secs.filter((_, i) => i !== si));
+  const addSection = () => editSections((secs) => [...secs, { title: "New Section", kind: "photo", target: 0, groups: [] }]);
+  const addGroup = (si: number) => editSections((secs) => secs.map((x, i) => (i === si ? { ...x, groups: [...(x.groups || []), { title: "", count: x.kind === "clip" ? 1 : 3, refs: [], ref_link: "" }] } : x)));
+  const updGroup = (si: number, gi: number, patch: any) => editSections((secs) => secs.map((x, i) => (i === si ? { ...x, groups: x.groups.map((g: any, j: number) => (j === gi ? { ...g, ...patch } : g)) } : x)));
+  const rmGroup = (si: number, gi: number) => editSections((secs) => secs.map((x, i) => (i === si ? { ...x, groups: x.groups.filter((_: any, j: number) => j !== gi) } : x)));
+
   const compl = (id: string): number => {
     switch (id) {
       case "core": return (form.title ? 40 : 0) + 30 + (form.description ? 30 : 0);
@@ -91,6 +119,7 @@ export default function CreateTaskModal({
       case "teasing": return (data.teasing?.trim() || data.parts?.length) ? 100 : 0;
       case "swipe": return data.swipe ? 100 : 0;
       case "gallery": return (data.media_refs?.gallery?.length) ? 100 : 0;
+      case "setbuilder": return (data.sections || []).some((s: any) => (s.groups || []).length) ? 100 : 0;
       default: return 0;
     }
   };
@@ -363,6 +392,52 @@ export default function CreateTaskModal({
               <label className="fld-l">Task Gallery Media</label>
               <div className="sub" style={{ margin: "-2px 0 10px" }}>Add images and videos that models can swipe through in the gallery view</div>
               <MediaBox big value={getRefs("gallery")} onChange={(a) => setRefs("gallery", a)} empty="" />
+            </>)}
+
+            {sections.includes("setbuilder") && sec("setbuilder", <>
+              <div className="sd">Build the sets, their sections, and the grouped shots/clips. Attach reference examples to each group — the model recreates them.</div>
+              <div className="set-top">
+                <div>
+                  <label className="fld-l">Number of sets</label>
+                  <div className="stepper">
+                    <button type="button" onClick={() => setSets(setsCount - 1)} disabled={setsCount <= 1}>−</button>
+                    <span>{setsCount}</span>
+                    <button type="button" onClick={() => setSets(setsCount + 1)}>+</button>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="fld-l">Note across sets</label>
+                  <input className="inp" value={data.set_note || ""} onChange={(e) => setD("set_note", e.target.value)} placeholder="e.g., Wear different clothes for each set" />
+                </div>
+              </div>
+
+              {(data.sections || []).map((sc: any, si: number) => (
+                <div className="set-section" key={si}>
+                  <div className="ss-head">
+                    <input className="inp ss-title" value={sc.title} onChange={(e) => updSection(si, { title: e.target.value })} placeholder="Section name" />
+                    <select className="inp ss-kind" value={sc.kind} onChange={(e) => updSection(si, { kind: e.target.value })}>
+                      <option value="photo">Photos</option><option value="clip">Clips</option>
+                    </select>
+                    <input className="inp ss-target" type="number" min={0} value={sc.target} onChange={(e) => updSection(si, { target: Number(e.target.value) })} title="Target count" />
+                    <button type="button" className="btn icon sm danger" title="Remove section" onClick={() => rmSection(si)}><Icon name="trash" /></button>
+                  </div>
+                  {(sc.groups || []).map((g: any, gi: number) => (
+                    <div className="set-group" key={gi}>
+                      <button type="button" className="rm" onClick={() => rmGroup(si, gi)}><Icon name="x" /></button>
+                      <div className="sg-row">
+                        <input className="inp" value={g.title} placeholder={sc.kind === "clip" ? "Clip name (e.g., Bulge Tease)" : "Group name (e.g., 3-Piece Bulge Standing)"} onChange={(e) => updGroup(si, gi, { title: e.target.value })} />
+                        <input className="inp sg-count" type="number" min={1} value={g.count} onChange={(e) => updGroup(si, gi, { count: Number(e.target.value) })} title="How many pieces" />
+                      </div>
+                      {sc.kind === "clip" && (
+                        <input className="inp" style={{ marginTop: 8 }} value={g.ref_link || ""} placeholder="Reference video link (optional)" onChange={(e) => updGroup(si, gi, { ref_link: e.target.value })} />
+                      )}
+                      <MediaBox value={g.refs || []} onChange={(a) => updGroup(si, gi, { refs: a })} empty={sc.kind === "clip" ? "No reference clip added yet" : "No reference media added yet"} />
+                    </div>
+                  ))}
+                  <button type="button" className="btn sm" onClick={() => addGroup(si)}><Icon name="plus" /> Add {sc.kind === "clip" ? "clip" : "group"}</button>
+                </div>
+              ))}
+              <button type="button" className="btn" style={{ width: "100%", justifyContent: "center", marginTop: 12 }} onClick={addSection}><Icon name="plus" /> Add section</button>
             </>)}
 
             {sections.includes("swipe") && sec("swipe", <>

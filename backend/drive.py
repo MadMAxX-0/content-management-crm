@@ -335,6 +335,17 @@ def task_subfolders(task_type: str | None, data: dict | None) -> list[str]:
         return ["Video", "Pictures"]
     if task_type == "swipe":
         return ["Swipe"]
+    if task_type == "content_set":
+        sets = int(data.get("sets") or 1)
+        titles = []
+        for sec in (data.get("sections") or []):
+            for g in (sec.get("groups") or []):
+                titles.append((g.get("title") or "Group").strip())
+        out = []
+        for n in range(1, max(1, sets) + 1):
+            for i, title in enumerate(titles):
+                out.append(f"Set {n} · {i + 1}. {title}")
+        return out
     # video, or anything else → single task folder, no subfolders
     return []
 

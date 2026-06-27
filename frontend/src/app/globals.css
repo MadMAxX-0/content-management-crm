@@ -314,6 +314,42 @@ svg{flex:0 0 auto}
 .rt-x svg{width:12px;height:12px}
 .btn.sm.is-busy{opacity:.7}
 
+/* Content Set builder (task modal) */
+.set-top{display:flex;gap:14px;align-items:flex-end;margin-bottom:14px}
+.stepper{display:inline-flex;align-items:center;gap:0;border:1px solid var(--line3);border-radius:10px;overflow:hidden}
+.stepper button{width:36px;height:38px;border:0;background:#fff;font-size:18px;cursor:pointer;color:#3f3f46}
+.stepper button:disabled{opacity:.4;cursor:default}
+.stepper span{min-width:40px;text-align:center;font-weight:700}
+.set-section{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;background:#fcfcfd}
+.ss-head{display:flex;gap:8px;align-items:center}
+.ss-head .ss-title{flex:1;font-weight:600}
+.ss-head .ss-kind{width:104px;flex:0 0 104px}
+.ss-head .ss-target{width:72px;flex:0 0 72px}
+.set-group{position:relative;border:1px dashed var(--line3);border-radius:10px;padding:11px;margin:10px 0}
+.set-group .rm{position:absolute;top:7px;right:7px;width:22px;height:22px;border:0;border-radius:50%;background:#f3f4f6;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.set-group .rm svg{width:13px;height:13px}
+.sg-row{display:flex;gap:8px}
+.sg-row .inp:first-child{flex:1}
+.sg-count{width:74px;flex:0 0 74px}
+
+/* Content Set — creator view */
+.cs-setnote{display:flex;align-items:center;gap:8px;background:var(--pink-soft);border:1px solid var(--pink-softln);color:var(--pink-tx);
+  border-radius:13px;padding:11px 13px;font-size:13px;font-weight:600;margin-bottom:12px}
+.cs-setnote svg{width:15px;height:15px;flex:0 0 15px}
+.set-tabs{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.set-tabs button{border:1px solid var(--pink-softln);background:#fff;color:var(--pink-tx);border-radius:999px;padding:7px 16px;font-weight:700;font-size:13px;cursor:pointer}
+.set-tabs button.on{background:var(--pink-grad);color:#fff;border-color:transparent;box-shadow:var(--pink-sh)}
+.cs-sec{margin-bottom:18px}
+.cs-sec-h{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--pink);margin:0 2px 8px}
+.cs-target{font-weight:700;color:#a98ba0;text-transform:none;letter-spacing:0}
+.cs-group{background:#fff;border:1px solid #f6e3ec;border-radius:16px;padding:14px;margin-bottom:11px;box-shadow:0 5px 16px -12px rgba(196,24,99,.22)}
+.cs-group-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.cs-group-h b{font-size:14.5px;color:#241420}
+.cs-watch{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--pink-tx);background:var(--pink-soft);
+  border:1px solid var(--pink-softln);border-radius:9px;padding:7px 11px;margin-bottom:10px}
+.cs-watch svg{width:15px;height:15px}
+.cs-group .cv-refs{margin-bottom:11px}
+
 /* gallery picker modal grid */
 .gp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;max-height:54vh;overflow-y:auto;padding:2px}
 .gp-cell{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:2px solid var(--line3);background:#fafafb;cursor:pointer;padding:0}

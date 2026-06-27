@@ -57,6 +57,7 @@ const EN: Dict = {
   typePpvLong: "PPV Long Video",
   typeGallery: "Media Gallery",
   typeSwipe: "Swipe",
+  typeSet: "Content Set",
   typeTask: "Task",
 };
 
@@ -106,6 +107,7 @@ const PT: Dict = {
   typePpvLong: "Vídeo PPV longo",
   typeGallery: "Galeria de mídia",
   typeSwipe: "Swipe",
+  typeSet: "Conjunto de Conteúdo",
   typeTask: "Tarefa",
 };
 
@@ -155,6 +157,7 @@ const ES: Dict = {
   typePpvLong: "Video PPV largo",
   typeGallery: "Galería de medios",
   typeSwipe: "Swipe",
+  typeSet: "Conjunto de Contenido",
   typeTask: "Tarea",
 };
 
@@ -178,6 +181,7 @@ export const ST_KEY: Record<string, string> = {
 export const TYPE_KEY: Record<string, string> = {
   detailed: "typeDetailed", video: "typeVideo", ppv_sequence: "typePpvSeq",
   ppv_long: "typePpvLong", images_videos: "typeGallery", swipe: "typeSwipe",
+  content_set: "typeSet",
 };
 
 export function useAppLang() {
