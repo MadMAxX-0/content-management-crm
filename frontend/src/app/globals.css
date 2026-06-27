@@ -623,10 +623,25 @@ textarea.inp{min-height:84px;resize:vertical;font-family:inherit;line-height:1.5
 .cv-brief .cb-h svg{width:15px;height:15px;color:var(--pink)}
 .cv-brief .cb-b{font-size:13.5px;color:#4a3a44;line-height:1.6;white-space:pre-wrap}
 .cv-refs{display:flex;flex-wrap:wrap;gap:9px}
-.cv-ref{width:82px;height:82px;border-radius:13px;overflow:hidden;border:1px solid #f6e3ec;background:#fff5f9;display:block}
+.cv-ref{width:82px;height:82px;border-radius:13px;overflow:hidden;border:1px solid #f6e3ec;background:#fff5f9;display:block;padding:0;cursor:pointer}
 .cv-ref img{width:100%;height:100%;object-fit:cover;display:block}
 .cv-ref-file{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--pink)}
 .cv-ref-file svg{width:28px;height:28px}
+
+/* in-page lightbox viewer */
+.lb{position:fixed;inset:0;z-index:1000;background:rgba(12,7,10,.93);display:flex;align-items:center;justify-content:center;padding:20px}
+.lb-stage{max-width:100%;max-height:100%;display:flex;align-items:center;justify-content:center}
+.lb-stage img,.lb-stage video{max-width:100%;max-height:86vh;border-radius:14px;object-fit:contain}
+.lb-x{position:absolute;top:calc(14px + env(safe-area-inset-top));right:16px;width:42px;height:42px;border-radius:50%;border:0;
+  background:rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.lb-x svg{width:20px;height:20px}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;
+  background:rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.lb-nav svg{width:22px;height:22px}
+.lb-nav.prev{left:12px}
+.lb-nav.next{right:12px}
+.lb-count{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);color:#fff;
+  font-weight:700;font-size:13px;background:rgba(255,255,255,.18);padding:5px 13px;border-radius:999px}
 
 .cv-slots-h{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--pink);margin:14px 0 0;padding-left:2px}
 

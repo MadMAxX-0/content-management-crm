@@ -205,6 +205,8 @@ function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
   const review = task.review || {};
   const st = task.assignee_status;
   const [busy, setBusy] = useState(false);
+  const [lb, setLb] = useState<{ items: any[]; i: number } | null>(null);
+  const openView = (items: any[], i: number) => setLb({ items, i });
   const locked = st === "submitted" || st === "approved";
 
   const submit = async () => {
@@ -240,11 +242,11 @@ function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
         <Brief icon="shirt" title={t("briefOutfit")} body={d.outfit.filter((o: string) => o?.trim()).join("\n\n")} />}
       {d.location && <Brief icon="camera" title={t("briefLocation")} body={d.location} />}
 
-      <RefStrip data={d} />
+      <RefStrip data={d} onView={openView} />
 
       <div className="cv-slots-h">{t("uploadHeader")}</div>
       {task.type === "content_set" ? (
-        <ContentSetView task={task} folders={folders} review={review} locked={locked} t={t} />
+        <ContentSetView task={task} folders={folders} review={review} locked={locked} t={t} onView={openView} />
       ) : !task.upload_folder_id ? (
         <div className="empty-row">{t("noFolder")}</div>
       ) : slots.length === 0 ? (
@@ -264,13 +266,15 @@ function TaskDetail({ task, modelId, folders, t, onBack, onChanged }: {
           {st === "submitted" ? t("submittedWait") : st === "changes_requested" ? t("resubmit") : t("submit")}
         </button>
       )}
+
+      {lb && <Lightbox items={lb.items} index={lb.i} onClose={() => setLb(null)} />}
     </div>
   );
 }
 
 // Content Set: set switcher → sections → group cards (references + an upload slot each).
-function ContentSetView({ task, folders, review, locked, t }: {
-  task: TaskRow; folders: Record<string, string>; review: any; locked?: boolean; t: TFn;
+function ContentSetView({ task, folders, review, locked, t, onView }: {
+  task: TaskRow; folders: Record<string, string>; review: any; locked?: boolean; t: TFn; onView: (items: any[], i: number) => void;
 }) {
   const { sets, setCount, note } = contentSetLayout(task);
   const [active, setActive] = useState(1);
@@ -289,19 +293,19 @@ function ContentSetView({ task, folders, review, locked, t }: {
       )}
       {cur.sections.map((sec, si) => (
         <div className="cs-sec" key={si}>
-          <div className="cs-sec-h"><span>{sec.title}</span><span className="cs-target">{sec.kind === "clip" ? "🎬" : "📷"} {sec.target}</span></div>
+          <div className="cs-sec-h"><span>{sec.title}</span></div>
           {sec.groups.length === 0
             ? <div className="sub" style={{ padding: "2px 2px 6px" }}>Nothing here yet.</div>
             : sec.groups.map((g, gi) => (
               <div className="cs-group" key={gi}>
-                <div className="cs-group-h"><b>{g.title || "Untitled"}</b><span className="badge b-soft">{g.count} {g.kind === "clip" ? "clip" : "pcs"}</span></div>
+                <div className="cs-group-h"><b>{g.title || "Untitled"}</b><span className="badge b-soft">{g.count} {g.kind === "clip" ? (g.count === 1 ? "Clip" : "Clips") : (g.count === 1 ? "Picture" : "Pictures")}</span></div>
                 {g.ref_link && <a className="cs-watch" href={g.ref_link} target="_blank" rel="noreferrer"><Icon name="video" /> Watch reference</a>}
                 {g.refs?.length > 0 && (
                   <div className="cv-refs">
-                    {g.refs.map((m: any) => (
-                      <a className="cv-ref" key={m.id} href={`${apiBase}/api/file/${m.id}/content`} target="_blank" rel="noreferrer" title={m.name}>
+                    {g.refs.map((m: any, ri: number) => (
+                      <button className="cv-ref" key={m.id} onClick={() => onView(g.refs, ri)} title={m.name}>
                         {isImg(m.mimeType) ? <img src={`${apiBase}/api/file/${m.id}/content`} alt={m.name || ""} loading="lazy" /> : <span className="cv-ref-file"><Icon name={m.mimeType?.startsWith("video/") ? "video" : "clip"} /></span>}
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -315,7 +319,7 @@ function ContentSetView({ task, folders, review, locked, t }: {
 }
 
 // Reference media (example shots the manager attached across the task) shown to the creator.
-function RefStrip({ data }: { data: any }) {
+function RefStrip({ data, onView }: { data: any; onView: (items: any[], i: number) => void }) {
   const refs = Object.values((data?.media_refs || {}) as Record<string, any[]>).flat().filter(Boolean);
   const seen = new Set<string>();
   const uniq = refs.filter((m: any) => m?.id && !seen.has(m.id) && (seen.add(m.id), true));
@@ -324,14 +328,36 @@ function RefStrip({ data }: { data: any }) {
     <div className="cv-brief">
       <div className="cb-h"><Icon name="gallery" /> References</div>
       <div className="cv-refs">
-        {uniq.map((m: any) => (
-          <a className="cv-ref" key={m.id} href={`${apiBase}/api/file/${m.id}/content`} target="_blank" rel="noreferrer" title={m.name}>
+        {uniq.map((m: any, ri: number) => (
+          <button className="cv-ref" key={m.id} onClick={() => onView(uniq, ri)} title={m.name}>
             {isImg(m.mimeType)
               ? <img src={`${apiBase}/api/file/${m.id}/content`} alt={m.name || ""} loading="lazy" />
               : <span className="cv-ref-file"><Icon name={m.mimeType?.startsWith("video/") ? "video" : "clip"} /></span>}
-          </a>
+          </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+// In-page full-screen viewer for reference media (image or video), with swipe.
+function Lightbox({ items, index, onClose }: { items: any[]; index: number; onClose: () => void }) {
+  const [i, setI] = useState(index);
+  const m = items[i];
+  if (!m) return null;
+  const url = `${apiBase}/api/file/${m.id}/content`;
+  const go = (e: React.MouseEvent, d: number) => { e.stopPropagation(); setI((x) => (x + d + items.length) % items.length); };
+  return (
+    <div className="lb" onClick={onClose}>
+      <button className="lb-x" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
+      {items.length > 1 && <button className="lb-nav prev" onClick={(e) => go(e, -1)} aria-label="Previous"><Icon name="chevr" style={{ transform: "rotate(180deg)" }} /></button>}
+      <div className="lb-stage" onClick={(e) => e.stopPropagation()}>
+        {isImg(m.mimeType)
+          ? <img src={url} alt={m.name || ""} />
+          : <video src={url} controls autoPlay playsInline />}
+      </div>
+      {items.length > 1 && <button className="lb-nav next" onClick={(e) => go(e, 1)} aria-label="Next"><Icon name="chevr" /></button>}
+      {items.length > 1 && <div className="lb-count">{i + 1} / {items.length}</div>}
     </div>
   );
 }
