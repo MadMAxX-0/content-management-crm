@@ -17,6 +17,7 @@ const NAV = [
   { href: "/drive", icon: "folder", label: "Drive Manager" },
   { href: "/templates", icon: "folders", label: "Drive Templates", soon: true },
   { href: "/stats", icon: "pie", label: "Statistics" },
+  { href: "/deep-links", icon: "link", label: "Deep Links" },
   { group: "Creator" },
   { href: "/app", icon: "phone", label: "Creator App" },
 ];
