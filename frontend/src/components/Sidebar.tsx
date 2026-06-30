@@ -13,15 +13,14 @@ type NavItem =
 const NAV: NavItem[] = [
   { group: "Workspace" },
   { href: "/", icon: "grid", label: "Overview" },
-  { href: "/x-ai-studio", icon: "spark", label: "X AI Studio", pill: "Soon" },
   { href: "/users", icon: "users", label: "Manage Users" },
   { href: "/models", icon: "star", label: "Manage Models" },
   { href: "/register-models", icon: "uplus", label: "Register Models", pill: "Soon" },
   { href: "/departments", icon: "building", label: "Manage Departments", pill: "Mock" },
-  { href: "/projects", icon: "folders", label: "Manage Projects", pill: "Soon" },
+  { href: "/projects", icon: "folders", label: "Manage Projects", pill: "Mock" },
   { group: "Content" },
   { href: "/tasks", icon: "clip", label: "Model Tasks" },
-  { href: "/create-tasks", icon: "plus", label: "Create Tasks", pill: "Soon" },
+  { href: "/create-tasks", icon: "plus", label: "Create Tasks", pill: "Mock" },
   { href: "/custom-roles", icon: "user", label: "Custom Roles", pill: "Mock" },
   { href: "/signatures", icon: "edit", label: "Signatures", pill: "Soon" },
   { href: "/media-library", icon: "image", label: "Media Library", pill: "Soon" },
@@ -95,7 +94,6 @@ export default function Sidebar({ open }: { open?: boolean }) {
             <button className="nav-office" onClick={() => setOfficeOpen(true)}>
               <Icon name="layers" /> Office
             </button>
-            <Link href="#" className="soon"><Icon name="spark" /> X AI <span className="pill">AI</span></Link>
           </>
         )}
         {authEnabled && (
