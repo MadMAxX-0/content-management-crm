@@ -66,6 +66,9 @@ const P: Record<string, React.ReactNode> = {
   bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></>,
   minus: <line x1="5" y1="12" x2="19" y2="12"/>,
   shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
+  activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
+  code: <><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></>,
+  xcircle: <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>,
 };
 
 export default function Icon({

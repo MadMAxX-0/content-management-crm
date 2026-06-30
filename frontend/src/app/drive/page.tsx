@@ -1,204 +1,266 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// MOCK Drive Manager (visual redesign, no backend).
+// The REAL backend-connected Drive Manager is archived at:
+//   frontend/src/archive/drive-manager-real/DriveManagerReal.tsx  (+ NOTES.md)
+// Restore it to re-enable live Google Drive browsing.
+// ─────────────────────────────────────────────────────────────────────────────
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Icon from "@/components/Icon";
-import FolderTree from "@/components/FolderTree";
-import PreviewModal from "@/components/PreviewModal";
-import FolderPicker from "@/components/FolderPicker";
-import { api, DriveItem, DriveStatus, FOLDER_MIME, ModelRow } from "@/lib/api";
 
-export default function DrivePage() {
-  const [status, setStatus] = useState<DriveStatus | null>(null);
-  const [models, setModels] = useState<ModelRow[]>([]);
-  const [selected, setSelected] = useState<ModelRow | null>(null);
-  const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-  const [preview, setPreview] = useState<DriveItem | null>(null);
-  const [picker, setPicker] = useState<{ mode: "move" | "copy"; file: DriveItem } | null>(null);
-  const [treeKey, setTreeKey] = useState(0);
+// ── Mock model ────────────────────────────────────────────────────────────────
+type FsNode = { id: string; name: string; type: "folder" | "file"; kind?: "image" | "video" | "doc"; children?: FsNode[] };
+type Model = { id: string; name: string; template: string; color: string; tree: FsNode };
 
-  const loadStatus = useCallback(async () => {
-    try { setStatus(await api.status()); } catch (e: any) { setErr(e.message); }
-  }, []);
-  const loadModels = useCallback(async () => {
-    try {
-      const list = await api.listModels();
-      setModels(list);
-      setSelected((sel) => (sel ? list.find((m) => m.id === sel.id) ?? null : null));
-    } catch (e: any) { setErr(e.message); }
-  }, []);
+const files = (prefix: string, n: number, kind: "image" | "video" | "doc", ext: string): FsNode[] =>
+  Array.from({ length: n }, (_, i) => ({ id: `${prefix}-${i}`, name: `${prefix}_${i + 1}.${ext}`, type: "file" as const, kind }));
 
-  useEffect(() => { loadStatus(); }, [loadStatus]);
-  useEffect(() => { if (status?.connected) loadModels(); }, [status?.connected, loadModels]);
+const MODELS: Model[] = [
+  {
+    id: "m-sw", name: "sw", template: "Jasmine", color: "#d98324",
+    tree: { id: "r1", name: "Root folder", type: "folder", children: [
+      { id: "f1", name: "Verification", type: "folder", children: [
+        { id: "v1", name: "id_front.jpg", type: "file", kind: "image" },
+        { id: "v2", name: "contract.pdf", type: "file", kind: "doc" },
+      ] },
+    ] },
+  },
+  {
+    id: "m-um", name: "Unnamed Model", template: "Test", color: "#2a9d8f",
+    tree: { id: "r2", name: "Root folder", type: "folder", children: [
+      { id: "vid", name: "Videos", type: "folder", children: files("clip", 6, "video", "mp4") },
+      { id: "pho", name: "Photos", type: "folder", children: files("shot", 9, "image", "jpg") },
+      { id: "leg", name: "Legal", type: "folder", children: files("doc", 3, "doc", "pdf") },
+    ] },
+  },
+];
 
-  const createModel = async () => {
-    if (!newName.trim()) return;
-    setBusy(true); setErr(null);
-    try { await api.createModel({ name: newName.trim() }); setNewName(""); setShowNew(false); await loadModels(); }
-    catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+const countFiles = (n: FsNode): number =>
+  n.type === "file" ? 1 : (n.children || []).reduce((s, c) => s + countFiles(c), 0);
+
+const kindIcon = (n: FsNode) => n.type === "folder" ? "folder" : n.kind === "video" ? "video" : n.kind === "doc" ? "note" : "image";
+
+export default function DriveManagerPage() {
+  const [provider, setProvider] = useState<"gdrive" | "dropbox">("gdrive");
+  const [models, setModels] = useState<Model[]>(MODELS);
+  const [selId, setSelId] = useState<string>("");
+  const [q, setQ] = useState("");
+  const [asc, setAsc] = useState(true);
+  const [filter, setFilter] = useState<"all" | "withfiles" | "empty">("all");
+  const [menu, setMenu] = useState<string | null>(null);
+  const [reqModal, setReqModal] = useState(false);
+  const [moveModal, setMoveModal] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [reqs, setReqs] = useState<Record<string, string>>({});
+
+  const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2200); };
+
+  const rows = useMemo(() => {
+    let r = models.slice();
+    const t = q.trim().toLowerCase();
+    if (t) r = r.filter((m) => m.name.toLowerCase().includes(t) || m.template.toLowerCase().includes(t));
+    if (filter === "withfiles") r = r.filter((m) => countFiles(m.tree) > 0);
+    if (filter === "empty") r = r.filter((m) => countFiles(m.tree) === 0);
+    r.sort((a, b) => (asc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
+    return r;
+  }, [models, q, asc, filter]);
+
+  const selected = models.find((m) => m.id === selId) || null;
+
+  const removeModel = (id: string) => {
+    setMenu(null);
+    if (!confirm("Remove this model from Drive Manager?")) return;
+    setModels((s) => s.filter((m) => m.id !== id));
+    if (selId === id) setSelId("");
   };
-  const setupFolder = async (m: ModelRow) => {
-    try { const updated = await api.setupModelFolder(m.id); setSelected(updated); await loadModels(); }
-    catch (e: any) { setErr(e.message); }
-  };
-  const doPick = async (dest: string) => {
-    if (!picker) return;
-    const { mode, file } = picker;
-    setPicker(null);
-    try {
-      if (mode === "move") await api.moveFile(file.id, dest);
-      else await api.copyFile(file.id, dest);
-      setTreeKey((k) => k + 1);
-    } catch (e: any) { setErr(e.message); }
-  };
-  const disconnect = async () => { await api.disconnect(); setStatus(null); await loadStatus(); };
-
-  const filtered = models.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
-
-  if (status && !status.configured)
-    return <Shell><div className="note">Backend not configured. Set <b>GOOGLE_CLIENT_ID</b> / <b>SECRET</b> in <code>backend/.env</code>.</div></Shell>;
-
-  if (status && !status.connected)
-    return (
-      <Shell>
-        <div className="card pad" style={{ maxWidth: 540 }}>
-          <div className="fav" style={{ width: 48, height: 48, borderRadius: 13, marginBottom: 14 }}><Icon name="database" /></div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>Connect Google Drive</div>
-          <p className="sub" style={{ margin: "4px 0 18px" }}>Link the agency Google account. The CRM auto-creates the folder structure.</p>
-          <a className="btn brand" href={api.loginUrl}><Icon name="link" /> Connect Google Drive</a>
-        </div>
-      </Shell>
-    );
-
-  if (!status) return <Shell><div className="empty"><Icon name="refresh" className="spin" /> Loading…</div></Shell>;
 
   return (
     <div className="content">
       <div className="page-head">
-        <div><h1>Drive Manager</h1><p>Browse and manage model drive folders and files</p></div>
+        <div>
+          <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            Drive Manager
+            <span className="seg" style={{ marginLeft: 4 }}>
+              <button className={provider === "gdrive" ? "active" : ""} onClick={() => setProvider("gdrive")}><Icon name="folder" /> Google Drive</button>
+              <button className={provider === "dropbox" ? "active" : ""} onClick={() => setProvider("dropbox")}><Icon name="database" /> Dropbox</button>
+            </span>
+          </h1>
+          <p>Browse and manage model drive folders and files.</p>
+        </div>
         <div className="btn-row">
-          <button className="btn" onClick={() => setShowNew((v) => !v)}><Icon name="uplus" /> New model</button>
-          <button className="btn" onClick={loadModels}><Icon name="refresh" /> Refresh</button>
-          <button className="btn ghost danger" onClick={disconnect}><Icon name="power" /> Disconnect</button>
+          <button className="btn" onClick={() => setReqModal(true)}><Icon name="target" /> Set requirement</button>
+          <button className="btn" onClick={() => setMoveModal(true)}><Icon name="transfer" /> Move transfer</button>
         </div>
       </div>
 
-      <div className="card pad" style={{ marginBottom: 18 }}>
-        <div className="statusbar">
-          <span className="badge b-green"><Icon name="check" /> Connected</span>
-          <span className="kv"><Icon name="user" style={{ width: 14, height: 14 }} /> <b>{status.email}</b></span>
-          <span className="badge b-grey"><Icon name="database" /> {status.shared_drive ? "Shared Drive" : "My Drive"}</span>
-          <span className="kv">Root: <b>{status.root_folder}</b></span>
-          {status.db != null && <span className="badge b-soft">Supabase {status.db ? "live" : "error"}</span>}
-          {status.root?.webViewLink && (
-            <a className="btn sm" href={status.root.webViewLink} target="_blank" rel="noreferrer"><Icon name="external" /> Open in Drive</a>
-          )}
-        </div>
-      </div>
+      {provider === "dropbox" ? (
+        <div className="card pad"><div className="empty" style={{ padding: "70px 16px" }}>
+          <Icon name="database" /><div style={{ fontWeight: 600, color: "#3f3f46" }}>Dropbox not connected</div>
+          <div className="sub">Connect a Dropbox account to browse model folders here.</div>
+          <button className="btn brand" style={{ marginTop: 8 }} onClick={() => flash("Dropbox connect is mocked.")}><Icon name="link" /> Connect Dropbox</button>
+        </div></div>
+      ) : (
+        <div className="grid2">
+          {/* LEFT: models */}
+          <div className="card pad">
+            <div className="panel-title"><Icon name="user" /> Models <span className="badge b-todo">{rows.length}</span></div>
+            <div className="panel-sub">Select a model to view their drive structure.</div>
+            <div className="search-bar" style={{ margin: "4px 0 10px" }}><Icon name="search" /><input placeholder="Search models…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+            <div className="btn-row" style={{ marginBottom: 12 }}>
+              <button className="btn sm" onClick={() => setAsc((v) => !v)}><Icon name={asc ? "chevu" : "chevd"} /> A–Z</button>
+              <select className="inp" style={{ width: "auto" }} value={filter} onChange={(e) => setFilter(e.target.value as any)}>
+                <option value="all">All</option><option value="withfiles">With files</option><option value="empty">Empty</option>
+              </select>
+            </div>
 
-      {showNew && (
-        <div className="card pad" style={{ marginBottom: 18 }}>
-          <div className="panel-title"><Icon name="uplus" /> Quick add model</div>
-          <div className="panel-sub">Registers the model + auto-creates its Drive folder. (Full registration on <b>Manage Models</b>.)</div>
-          <div className="field">
-            <input placeholder="Model name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <button className="btn brand sm" onClick={createModel} disabled={busy}>
-              {busy ? <Icon name="refresh" className="spin" /> : <Icon name="plus" />} Create
-            </button>
+            {rows.length === 0 ? (
+              <div className="empty"><Icon name="user" /><div className="sub">No models match.</div></div>
+            ) : rows.map((m) => {
+              const fc = countFiles(m.tree);
+              return (
+                <div key={m.id} className={`dm-row ${selId === m.id ? "on" : ""}`} onClick={() => setSelId(m.id)}>
+                  <span className="dm-av" style={{ background: m.color }}>{m.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}</span>
+                  <div className="dm-main">
+                    <div className="u-name">{m.name}</div>
+                    <span className="badge b-todo"><Icon name="folders" /> {m.template}</span>
+                  </div>
+                  <span className="badge b-soft">{fc} files</span>
+                  <div style={{ position: "relative" }}>
+                    <button className="btn icon sm" onClick={(e) => { e.stopPropagation(); setMenu(menu === m.id ? null : m.id); }}><Icon name="dots" /></button>
+                    {menu === m.id && (
+                      <>
+                        <div className="backdrop" onClick={(e) => { e.stopPropagation(); setMenu(null); }} />
+                        <div className="menu">
+                          <button onClick={(e) => { e.stopPropagation(); setSelId(m.id); setMenu(null); }}><Icon name="eye" /> View structure</button>
+                          <button onClick={(e) => { e.stopPropagation(); setMenu(null); flash("Open in Drive is mocked."); }}><Icon name="external" /> Open in Drive</button>
+                          <div className="sep" />
+                          <button className="danger" onClick={(e) => { e.stopPropagation(); removeModel(m.id); }}><Icon name="trash" /> Remove</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* RIGHT: drive structure */}
+          <div className="card pad">
+            <div className="panel-title"><Icon name="folders" /> Drive Structure</div>
+            {!selected ? (
+              <>
+                <div className="panel-sub">Select a model to view their drive structure.</div>
+                <div className="empty" style={{ padding: "80px 16px" }}><Icon name="folders" /><div>Select a model from the list to view their drive structure</div></div>
+              </>
+            ) : (
+              <>
+                <div className="panel-sub">
+                  Folders and files for <b style={{ color: "var(--ink)" }}>{selected.name}</b>
+                  {reqs[selected.id] && <span className="badge b-amber" style={{ marginLeft: 8 }}><Icon name="target" /> {reqs[selected.id]}</span>}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <TreeNode node={selected.tree} depth={0} defaultOpen onFile={(f) => flash(`Preview "${f.name}" is mocked.`)} />
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {err && <div className="note">{err}</div>}
+      {reqModal && (
+        <RequirementModal models={models} onClose={() => setReqModal(false)} onSave={(id, label) => { setReqs((r) => ({ ...r, [id]: label })); setReqModal(false); flash("Requirement saved."); }} />
+      )}
+      {moveModal && (
+        <MoveModal models={models} onClose={() => setMoveModal(false)} onMove={(from, to) => { setMoveModal(false); flash(`Transfer from ${from} → ${to} queued (mock).`); }} />
+      )}
+      {toast && <div className="dm-toast"><Icon name="check" /> {toast}</div>}
 
-      <div className="grid2">
-        {/* LEFT: models from DB */}
-        <div className="card pad">
-          <div className="panel-title"><Icon name="user" /> Models <span className="count">{models.length}</span></div>
-          <div className="panel-sub">{selected ? <>Selected: <b style={{ color: "var(--ink)" }}>{selected.name}</b></> : "Select a model to view their drive structure"}</div>
-          <div className="field" style={{ marginTop: 0 }}>
-            <input placeholder="Search models…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            {filtered.length === 0 ? (
-              <div className="empty">
-                <Icon name="user" />
-                <div style={{ fontWeight: 600, color: "#3f3f46" }}>No models yet</div>
-                <div className="sub">Use “New model” or register on Manage Models.</div>
-              </div>
-            ) : (
-              filtered.map((m) => (
-                <div key={m.id} className={`rowitem ${selected?.id === m.id ? "active" : ""}`} onClick={() => setSelected(m)}>
-                  <div className="fav">{m.name.charAt(0).toUpperCase()}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="nm">{m.name}</div>
-                    <div className="sub">{m.drive_folder_id ? m.status : "No folder yet"}</div>
-                  </div>
-                  <Icon name="chevr" style={{ width: 16, height: 16, color: "var(--muted2)" }} />
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+      <style>{`
+        .dm-row{display:flex;align-items:center;gap:11px;padding:11px;border-radius:11px;border:1px solid transparent;cursor:pointer}
+        .dm-row:hover{background:#fafafb}
+        .dm-row.on{border-color:var(--brand-softln);background:var(--brand-soft)}
+        .dm-av{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;color:#fff;font-size:12px;font-weight:700;flex:none}
+        .dm-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+        .dm-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:11px;padding:10px 16px;font-size:13px;font-weight:550;display:flex;align-items:center;gap:8px;box-shadow:var(--sh-lg);z-index:120}
+        .dm-toast svg{width:15px;height:15px;color:#7ee2a8}
+        .tn{user-select:none}
+        .tn-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:13.5px}
+        .tn-row:hover{background:#f4f4f6}
+        .tn-row svg{width:16px;height:16px;color:var(--muted2)}
+        .tn-row .tn-fold{color:#3b6fd4}
+        .tn-count{margin-left:auto;font-size:11px;color:var(--muted2)}
+        .tn-kids{margin-left:16px;border-left:1px solid var(--line2);padding-left:6px}
+      `}</style>
+    </div>
+  );
+}
 
-        {/* RIGHT: drive structure */}
-        <div className="card pad">
-          <div className="panel-title"><Icon name="folders" /> Drive Structure</div>
-          {!selected ? (
-            <>
-              <div className="panel-sub">Select a model to view their drive structure</div>
-              <div className="empty"><Icon name="folders" /><div>Select a model from the list to view their drive structure</div></div>
-            </>
-          ) : !selected.drive_folder_id ? (
-            <>
-              <div className="panel-sub">No drive folder for <b style={{ color: "var(--ink)" }}>{selected.name}</b> yet.</div>
-              <div className="empty">
-                <Icon name="folder" />
-                <div>This model has no Drive folder.</div>
-                <button className="btn brand sm" onClick={() => setupFolder(selected)}><Icon name="folderplus" /> Set up folder</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="panel-sub">Folders and files for <b style={{ color: "var(--ink)" }}>{selected.name}</b></div>
-              <div style={{ marginTop: 6 }}>
-                <FolderTree
-                  key={`${selected.id}-${treeKey}`}
-                  root={{ id: selected.drive_folder_id, name: selected.name, mimeType: FOLDER_MIME }}
-                  label={selected.name}
-                  onErr={setErr}
-                  reloadParent={loadModels}
-                  onPreview={setPreview}
-                  onPick={(mode, file) => setPicker({ mode, file })}
-                />
-              </div>
-            </>
-          )}
-        </div>
+function TreeNode({ node, depth, defaultOpen, onFile }: { node: FsNode; depth: number; defaultOpen?: boolean; onFile: (f: FsNode) => void }) {
+  const [open, setOpen] = useState(!!defaultOpen || depth === 0);
+  const isFolder = node.type === "folder";
+  const fc = isFolder ? countFiles(node) : 0;
+  return (
+    <div className="tn">
+      <div className="tn-row" onClick={() => (isFolder ? setOpen((v) => !v) : onFile(node))}>
+        {isFolder && <Icon name={open ? "chevd" : "chevr"} />}
+        <Icon name={kindIcon(node)} className={isFolder ? "tn-fold" : ""} />
+        <span>{node.name}</span>
+        {isFolder && <span className="tn-count">{fc} file{fc === 1 ? "" : "s"}</span>}
       </div>
-
-      {preview && <PreviewModal file={preview} onClose={() => setPreview(null)} />}
-      {picker && selected?.drive_folder_id && (
-        <FolderPicker
-          root={{ id: selected.drive_folder_id, name: selected.name, mimeType: FOLDER_MIME }}
-          rootLabel={selected.name}
-          mode={picker.mode}
-          fileName={picker.file.name}
-          onCancel={() => setPicker(null)}
-          onPick={doPick}
-        />
+      {isFolder && open && (
+        <div className="tn-kids">
+          {(node.children || []).map((c) => <TreeNode key={c.id} node={c} depth={depth + 1} onFile={onFile} />)}
+        </div>
       )}
     </div>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function RequirementModal({ models, onClose, onSave }: { models: Model[]; onClose: () => void; onSave: (id: string, label: string) => void }) {
+  const [model, setModel] = useState(models[0]?.id || "");
+  const [type, setType] = useState("Minimum files");
+  const [value, setValue] = useState("10");
   return (
-    <div className="content">
-      <div className="page-head"><div><h1>Drive Manager</h1><p>Browse and manage model drive folders and files</p></div></div>
-      {children}
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Set requirement</h3>
+        <p className="sub" style={{ margin: "0 0 16px" }}>Define a content requirement for a model's drive.</p>
+        <label className="dm-l">Model</label>
+        <select className="inp" value={model} onChange={(e) => setModel(e.target.value)}>{models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
+        <label className="dm-l" style={{ marginTop: 14 }}>Requirement</label>
+        <select className="inp" value={type} onChange={(e) => setType(e.target.value)}>
+          <option>Minimum files</option><option>Content rating</option><option>Weekly uploads</option>
+        </select>
+        <label className="dm-l" style={{ marginTop: 14 }}>Value</label>
+        <input className="inp" value={value} onChange={(e) => setValue(e.target.value)} />
+        <div className="actions">
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button className="btn brand" onClick={() => onSave(model, `${type}: ${value}`)}><Icon name="check" /> Save</button>
+        </div>
+        <style>{`.modal .dm-l{font-size:12.5px;font-weight:600;color:#3f3f46;margin:0 0 6px;display:block}`}</style>
+      </div>
+    </div>
+  );
+}
+
+function MoveModal({ models, onClose, onMove }: { models: Model[]; onClose: () => void; onMove: (from: string, to: string) => void }) {
+  const [from, setFrom] = useState(models[0]?.name || "");
+  const [to, setTo] = useState(models[1]?.name || models[0]?.name || "");
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Move transfer</h3>
+        <p className="sub" style={{ margin: "0 0 16px" }}>Move files from one model's drive to another.</p>
+        <label className="dm-l">From</label>
+        <select className="inp" value={from} onChange={(e) => setFrom(e.target.value)}>{models.map((m) => <option key={m.id}>{m.name}</option>)}</select>
+        <label className="dm-l" style={{ marginTop: 14 }}>To</label>
+        <select className="inp" value={to} onChange={(e) => setTo(e.target.value)}>{models.map((m) => <option key={m.id}>{m.name}</option>)}</select>
+        <div className="actions">
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button className="btn brand" onClick={() => onMove(from, to)}><Icon name="transfer" /> Move</button>
+        </div>
+        <style>{`.modal .dm-l{font-size:12.5px;font-weight:600;color:#3f3f46;margin:0 0 6px;display:block}`}</style>
+      </div>
     </div>
   );
 }
