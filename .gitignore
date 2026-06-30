@@ -14,7 +14,6 @@ out/
 .turbo/
 *.tsbuildinfo
 next-env.d.ts
-frontend/package-lock.json
 
 # ── Env & secrets (NEVER commit) ──
 .env
