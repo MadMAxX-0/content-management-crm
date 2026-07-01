@@ -181,6 +181,24 @@ export const api = {
     req("/api/users/role", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, role }) }),
   deleteUser: (id: string, email: string) =>
     req(`/api/users/${id}?email=${encodeURIComponent(email)}`, { method: "DELETE" }),
+
+  // social media tracker (HikerAPI — key stays server-side)
+  instagramProfile: (username: string): Promise<InstagramProfile> =>
+    req(`/api/social/instagram/${encodeURIComponent(username.trim().replace(/^@/, ""))}`),
+};
+
+export type InstagramProfile = {
+  pk: string;
+  username: string;
+  full_name: string;
+  followers: number;
+  following: number;
+  posts: number;
+  is_verified: boolean;
+  is_private: boolean;
+  category: string;
+  biography: string;
+  profile_pic_url: string;
 };
 
 export type Stats = {

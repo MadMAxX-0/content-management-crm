@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Icon from "@/components/Icon";
+import { api } from "@/lib/api";
 
 // ── Mock model ────────────────────────────────────────────────────────────────
 type Status = "active" | "inactive" | "pending" | "error";
@@ -170,6 +171,25 @@ function AddModal({ onClose, onSave }: { onClose: () => void; onSave: (a: Omit<A
   const [posts, setPosts] = useState("0");
   const [engagement, setEngagement] = useState("0");
   const [tags, setTags] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [fetchMsg, setFetchMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const isInstagram = platform === "Instagram";
+  const fetchLive = async () => {
+    const h = handle.trim().replace(/^@/, "");
+    if (!h || fetching) return;
+    setFetching(true); setFetchMsg(null);
+    try {
+      const p = await api.instagramProfile(h);
+      setFollowers(String(p.followers));
+      setPosts(String(p.posts));
+      setStatus(p.is_private ? "inactive" : "active");
+      setFetchMsg({ ok: true, text: `${p.full_name || p.username}${p.is_verified ? " ✓" : ""} · ${p.followers.toLocaleString()} followers · ${p.posts} posts` });
+    } catch {
+      setFetchMsg({ ok: false, text: "Couldn't fetch — check the handle or that the tracker is configured." });
+    } finally {
+      setFetching(false);
+    }
+  };
   const submit = () => {
     if (!handle.trim()) return;
     onSave({ platform, handle: handle.trim().startsWith("@") ? handle.trim() : "@" + handle.trim(), model, status,
@@ -185,7 +205,17 @@ function AddModal({ onClose, onSave }: { onClose: () => void; onSave: (a: Omit<A
           <div><label className="smt-l">Model</label><select className="inp" value={model} onChange={(e) => setModel(e.target.value)}>{MODELS.map((m) => <option key={m}>{m}</option>)}</select></div>
         </div>
         <label className="smt-l" style={{ marginTop: 14 }}>Handle</label>
-        <input className="inp" value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="@username" autoFocus />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="inp" style={{ flex: 1 }} value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="@username" autoFocus />
+          {isInstagram && (
+            <button className="btn brand" type="button" onClick={fetchLive} disabled={fetching || !handle.trim()} title="Fetch live stats from Instagram">
+              <Icon name={fetching ? "refresh" : "download"} /> {fetching ? "Fetching…" : "Fetch"}
+            </button>
+          )}
+        </div>
+        {fetchMsg && (
+          <div className="sub" style={{ marginTop: 6, color: fetchMsg.ok ? "#1f8f53" : "#c0392b", fontWeight: 550 }}>{fetchMsg.text}</div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 14 }}>
           <div><label className="smt-l">Followers</label><input className="inp" type="number" value={followers} onChange={(e) => setFollowers(e.target.value)} /></div>
           <div><label className="smt-l">Posts</label><input className="inp" type="number" value={posts} onChange={(e) => setPosts(e.target.value)} /></div>
