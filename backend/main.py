@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 import auth
 import db
 import drive
+import hiker
 import supa_admin
 import translate
 
@@ -252,6 +253,19 @@ def rename(file_id: str, name: str = Query(...), user: dict = Depends(require_ad
 def trash(file_id: str, user: dict = Depends(require_admin)):
     _require_connection()
     return drive.trash_file(file_id)
+
+
+# ───────────────────── Social Media Tracker (HikerAPI) ─────────────────────
+@app.get("/api/social/instagram/{username}")
+def social_instagram(username: str, user: dict = Depends(require_admin)):
+    """Fetch a public Instagram profile via HikerAPI. Admin-only (protects credits).
+    The HikerAPI key stays server-side; only whitelisted fields are returned."""
+    if not hiker.is_configured():
+        raise HTTPException(503, "Social tracker not configured (set HIKER_API_KEY).")
+    try:
+        return hiker.instagram_user(username)
+    except hiker.HikerError as e:
+        raise HTTPException(502, str(e))
 
 
 def _require_connection():
