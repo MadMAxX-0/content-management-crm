@@ -11,8 +11,8 @@ const SEED_LINKS: RegLink[] = [
   { id: "l2", token: "7851661ad77d9e8f7a6b5c4d", maxUses: 1, used: 1, expiry: "2026-06-16" },
 ];
 const SEED_REGS: Registration[] = [
-  { id: "r1", name: "Mous Kyle", email: "mouskyl@gmail.com", status: "Approved", date: "2026-06-17" },
-  { id: "r2", name: "sw", email: "jasminstarling2@gmail.com", status: "Approved", date: "2026-06-16" },
+  { id: "r1", name: "Mous Kyle", email: "mous.kyle@example.com", status: "Approved", date: "2026-06-17" },
+  { id: "r2", name: "sw", email: "jasmin.s@example.com", status: "Approved", date: "2026-06-16" },
 ];
 
 const TODAY = "2026-06-29";
